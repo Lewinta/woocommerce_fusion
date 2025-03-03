@@ -98,7 +98,7 @@ frappe.ui.form.on('WooCommerce Server', {
 					label: __('Delivery URL'),
 					fieldname: 'url',
 					fieldtype: 'Data',
-					default: '<site url here>/api/method/woocommerce_fusion.woocommerce_endpoint.order_created',
+					default: `${window.location.origin}/api/method/woocommerce_fusion.woocommerce_endpoint.order_created`,
 					read_only: 1
 				},
 				{

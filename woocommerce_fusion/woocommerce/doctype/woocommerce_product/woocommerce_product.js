@@ -7,6 +7,10 @@ frappe.ui.form.on("WooCommerce Product", {
 		frm.add_custom_button(__("Sync this Item to ERPNext"), function () {
 			frm.trigger("sync_product");
 		}, __('Actions'));
+		
+		frm.add_custom_button(__("Delete from Wordpress"), function () {
+			frm.trigger("delete_product");
+		}, __('Actions'));
 
 		// Set intro text
 		const intro_txt = __(
@@ -40,5 +44,39 @@ frappe.ui.form.on("WooCommerce Product", {
 			}
 		});
 	},
+	delete_product(frm){
+		// First let's prompt the user to confirm the deletion
+		frappe.confirm(
+			__('Are you sure you want to delete this product from WooCommerce?'),
+			function(){
+				// User has confirmed deletion
+				frappe.dom.freeze(__("Deleting Product from WooCommerce..."));
+				const {woocommerce_server,woocommerce_id} = frm.doc;
+				frappe.call({
+					method: "woocommerce_fusion.tasks.sync_items.delete_product_from_woocommerce",
+					args: { woocommerce_server, woocommerce_id },
+					callback: function(r) {
+						console.log(r);
+						frappe.dom.unfreeze();
+						frappe.show_alert({
+							message:__('Product deleted successfully'),
+							indicator:'green'
+						}, 5);
+						frm.reload_doc();
+					},
+					error: (r) => {
+						frappe.dom.unfreeze();
+						frappe.show_alert({
+							message: __('There was an error processing the request. See Error Log.'),
+							indicator: 'red'
+						}, 5);
+					}
+				});
+			},
+			function(){
+				// User has cancelled deletion
+			}
+		);
+	}
 });
 

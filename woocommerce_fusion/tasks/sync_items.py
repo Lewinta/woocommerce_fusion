@@ -4,6 +4,7 @@ from datetime import datetime
 from typing import List, Optional, Tuple
 
 import frappe
+import requests
 from erpnext.stock.doctype.item.item import Item
 from frappe import ValidationError, _, _dict
 from frappe.query_builder import Criterion
@@ -129,6 +130,51 @@ def sync_woocommerce_products_modified_since(date_time_from=None):
 	wc_settings.save()
 
 
+def sync_woocommerce_categories():
+	"""
+	Fetch WooCommerce product categories and store them in Frappe.
+	"""
+
+	def fetch_categories(server):
+		"""Fetch categories from a given WooCommerce server."""
+		url = f"{server['woocommerce_server_url'].rstrip('/')}/wp-json/wc/v3/products/categories"
+
+		try:
+			response = requests.get(url, auth=(server["api_consumer_key"], server["api_consumer_secret"]), timeout=10)
+			response.raise_for_status()
+			return response.json()
+		except requests.exceptions.RequestException as e:
+			frappe.log_error(f"WooCommerce API request failed for {server['name']}: {str(e)}", "WooCommerce Sync Error")
+			return []
+
+	def create_or_update_category(category, server_name):
+		"""Create or update WooCommerce categories in Frappe."""
+		category_data = {
+			"doctype": "Woocommerce Category",
+			"id": str(category["id"]),
+			"category_name": category["name"],
+			"slug": category["slug"],
+			"woocommerce_server": server_name,
+		}
+
+		category_filters = {
+			"id": category["id"],
+			"woocommerce_server": server_name
+		}
+
+		existing_category = frappe.db.exists("Woocommerce Category", category_filters)
+		frappe.get_doc(category_data).save()
+
+	filters = {"enable_sync": 1}
+	fields = ["name", "woocommerce_server_url", "api_consumer_key", "api_consumer_secret"]
+
+	servers = frappe.get_list("WooCommerce Server", filters=filters, fields=fields, as_list=False)
+
+	for server in servers:
+		categories = fetch_categories(server)
+		for category in categories:
+			create_or_update_category(category, server["name"])
+
 @dataclass
 class ERPNextItemToSync:
 	"""Class for keeping track of an ERPNext Item and the relevant WooCommerce Server to sync to"""
@@ -139,6 +185,30 @@ class ERPNextItemToSync:
 	@property
 	def item_woocommerce_server(self):
 		return self.item.woocommerce_servers[self.item_woocommerce_server_idx - 1]
+
+	def get_item_categories(self, server=None):
+		if not server:
+			return []
+		ITEM = frappe.qb.DocType("Item")
+		WCAS = frappe.qb.DocType("Woocommerce Categories")
+		WCAT = frappe.qb.DocType("Woocommerce Category")
+		ISRV = frappe.qb.DocType("Item WooCommerce Server")
+
+		return frappe.qb.from_(ITEM).join(ISRV).on(
+			ISRV.parent == ITEM.name
+		).join(WCAS).on(
+			WCAS.parent == ITEM.name
+		).join(WCAT).on(
+			WCAT.name == WCAS.category
+		).where(
+			(ITEM.name == self.item.name)&
+			(ISRV.woocommerce_server == server)
+		).select(
+			WCAT.id,
+			WCAT.category_name.as_("name"),
+			WCAT.slug
+		).run(as_dict=True)
+
 
 
 class SynchroniseItem(SynchroniseWooCommerce):
@@ -249,17 +319,18 @@ class SynchroniseItem(SynchroniseWooCommerce):
 			self.create_item(self.woocommerce_product)
 		elif self.item and self.woocommerce_product:
 			# both exist, check sync hash
+			
+			# Is important to convert the dates before comparing
+			wc_modified = get_datetime(self.woocommerce_product.woocommerce_date_modified)
+			erp_modified = get_datetime(self.item.item.modified)
+
 			if (
-				self.woocommerce_product.woocommerce_date_modified
+				wc_modified
 				!= self.item.item_woocommerce_server.woocommerce_last_sync_hash
 			):
-				if get_datetime(self.woocommerce_product.woocommerce_date_modified) > get_datetime(
-					self.item.item.modified
-				):
+				if get_datetime(wc_modified) > get_datetime(erp_modified):
 					self.update_item(self.woocommerce_product, self.item)
-				if get_datetime(self.woocommerce_product.woocommerce_date_modified) < get_datetime(
-					self.item.item.modified
-				):
+				if get_datetime(wc_modified) < get_datetime(erp_modified):
 					self.update_woocommerce_product(self.woocommerce_product, self.item)
 
 	def update_item(self, woocommerce_product: WooCommerceProduct, item: ERPNextItemToSync):
@@ -281,12 +352,47 @@ class SynchroniseItem(SynchroniseWooCommerce):
 					item.item.image = wc_product_images[0]["src"]
 					item_dirty = True
 
+		self.update_item_categories_from_woocommerce(woocommerce_product, item.item)
+		
 		if item_dirty or fields_updated:
 			item.item.flags.created_by_sync = True
 			item.item.save()
 
 		self.set_sync_hash()
 
+	def update_item_categories_from_woocommerce(
+		self, wc_product: WooCommerceProduct, item: Item
+	) -> None:
+		item_categories = set()
+		product_categories = set()
+		
+		for c in item.custom_woocommerce_categories:
+			item_categories.add(prepare_category(c))
+
+		raw_categories = json.loads(wc_product.categories or "[]")
+
+		for c in raw_categories:
+			product_categories.add(json.dumps(c, sort_keys=True))
+
+		# No need to make any actions if they are the same.
+		if item_categories == product_categories:
+			return
+		
+		# If these two sets are different we have to update the item
+		item.set("custom_woocommerce_categories", [])
+		for row in product_categories:
+			row = frappe._dict(json.loads(row))
+			filters = {
+				"id": row.id,
+				"category_name": row.name,
+				"slug": row.slug,
+				"woocommerce_server": wc_product.woocommerce_server
+			}
+			if name := frappe.db.exists("Woocommerce Category", filters):
+				item.append("custom_woocommerce_categories", {
+					"category": name
+				})
+	
 	def update_woocommerce_product(
 		self, wc_product: WooCommerceProduct, item: ERPNextItemToSync
 	) -> None:
@@ -428,6 +534,8 @@ class SynchroniseItem(SynchroniseWooCommerce):
 		item.flags.ignore_mandatory = True
 		item.flags.created_by_sync = True
 
+		self.update_item_categories_from_woocommerce(wc_product, item) 
+
 		if wc_server.enable_image_sync:
 			wc_product_images = json.loads(wc_product.images)
 			if len(wc_product_images) > 0:
@@ -535,6 +643,22 @@ class SynchroniseItem(SynchroniseWooCommerce):
 				wc_product_with_deserialised_fields = (
 					woocommerce_product.deserialize_attributes_of_type_dict_or_list(woocommerce_product)
 				)
+				
+				# **Always include categories**		
+				categories = item.get_item_categories(wc_server.name)
+				if categories:
+					# Update WooCommerce Product's categories
+					wc_product_with_deserialised_fields["categories"] = categories
+					wc_product_dirty = True
+				
+				# **Handle Featured Image Sync**
+				if item.item.custom_external_image: 
+					image_data = [{"src": item.item.custom_external_image}]
+					wc_product_with_deserialised_fields["images"] = image_data
+					wc_product_dirty = True
+				
+				if item.item.is_stock_item:
+					wc_product_with_deserialised_fields["manage_stock"] = True
 
 				for map in wc_server.item_field_map:
 					erpnext_item_field_name = map.erpnext_field_name.split(" | ")
@@ -688,3 +812,76 @@ def clear_sync_hash_and_run_item_sync(item_code: str):
 
 	if len(iwss) > 0:
 		run_item_sync(item_code=item_code, enqueue=True)
+
+@frappe.whitelist()
+def delete_product_from_woocommerce(woocommerce_server: str, woocommerce_id: str):
+	"""
+	Delete a WooCommerce Product using the WooCommerce API.
+	Args:
+		woocommerce_server (str): The base URL of the WooCommerce server
+		woocommerce_id (str): The WooCommerce Product ID to be deleted.
+	"""
+	if not frappe.db.exists("WooCommerce Server", woocommerce_server):
+		return
+
+	server = frappe.get_cached_doc("WooCommerce Server", woocommerce_server)
+	
+	consumer_key = server.api_consumer_key
+	consumer_secret = server.api_consumer_secret
+
+	# Construct the WooCommerce API URL to delete a product
+	url = f"{server.woocommerce_server_url.rstrip('/')}/wp-json/wc/v3/products/{woocommerce_id}"
+
+	# Prepare the authentication headers
+	auth = (consumer_key, consumer_secret)
+
+	# Send the DELETE request to WooCommerce API
+	try:
+		response = requests.delete(url, auth=auth, timeout=10)
+		
+		# Check if the request was successful
+		if response.status_code == 200:
+			frappe.msgprint(_("Product deleted successfully from WooCommerce."))
+			remove_reference_from_item(woocommerce_server, woocommerce_id)
+			return {"status": "success", "message": _("Product deleted successfully from WooCommerce.")}
+		else:
+			frappe.msgprint(_("Failed to delete product. Error: {0}").format(response.json().get("message", "Unknown error")))
+			return {"status": "error", "message": response.json().get("message", "Unknown error")}
+	
+	except requests.RequestException as e:
+		# Handle request exceptions (e.g., network errors)
+		frappe.msgprint(_("Error connecting to WooCommerce API. Please check your connection."))
+		return {"status": "error", "message": _("Error connecting to WooCommerce API.")}
+
+	
+def remove_reference_from_item(woocommerce_server, woocommerce_id):
+	if not woocommerce_server or not woocommerce_id:
+		return
+
+	ITEM = frappe.qb.DocType("Item")
+	ISRV = frappe.qb.DocType("Item WooCommerce Server")
+
+	row = frappe.qb.from_(ITEM).join(ISRV).on(
+		ISRV.parent == ITEM.name
+	).where(
+		(ISRV.woocommerce_server == woocommerce_server)&
+		(ISRV.woocommerce_id == woocommerce_id)
+	).select(
+		ISRV.name
+	).run(as_dict=True)
+
+	for r in row:
+		# let's remove the reference from the Item
+		frappe.qb.from_(ISRV).delete().where(ISRV.name == r.name).run()
+
+def prepare_category(category):
+	""" Convert the category on the ERPNext Item 
+	to the same structure on woocommerce 
+	"""
+	# Woocommerce categories Child
+	return json.dumps({
+		"id": category.id,
+		"name":	category.category,
+		"slug": category.slug
+	}, sort_keys=True)
+

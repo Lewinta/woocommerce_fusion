@@ -149,6 +149,7 @@ scheduler_events = {
 	"hourly_long": [
 		"woocommerce_fusion.tasks.sync_sales_orders.sync_woocommerce_orders_modified_since",
 		"woocommerce_fusion.tasks.sync_items.sync_woocommerce_products_modified_since",
+		"woocommerce_fusion.tasks.sync_items.sync_woocommerce_categories",
 	],
 	"daily_long": [
 		"woocommerce_fusion.tasks.stock_update.update_stock_levels_for_all_enabled_items_in_background",
@@ -173,6 +174,11 @@ before_tests = "woocommerce_fusion.setup.utils.before_tests"
 # each overriding function accepts a `data` argument;
 # generated from the base implementation of the doctype dashboard,
 # along with any modifications made in other Frappe apps
+
+override_doctype_class = {
+	"Item": "woocommerce_fusion.overrides.item.Item"
+}
+
 # override_doctype_dashboards = {
 # 	"Task": "woocommerce_fusion.task.get_dashboard_data"
 # }

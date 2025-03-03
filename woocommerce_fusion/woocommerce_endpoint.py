@@ -20,8 +20,11 @@ def validate_request() -> Tuple[bool, Optional[HTTPStatus], Optional[str]]:
 	# Get relevant WooCommerce Server
 	try:
 		webhook_source_url = frappe.get_request_header("x-wc-webhook-source", "")
-		wc_server = frappe.get_doc("WooCommerce Server", parse_domain_from_url(webhook_source_url))
+		# wc_server = frappe.get_doc("WooCommerce Server", parse_domain_from_url(webhook_source_url))
+		wc_server = frappe.get_doc("WooCommerce Server", "mratest.makereadyarmz.com")
 	except Exception:
+		message = _(f"WooCommerce Server not found for {webhook_source_url} \n\n{frappe.get_traceback()}")
+		frappe.log_error(_("WooCommerce Server not found"), message)
 		return False, HTTPStatus.BAD_REQUEST, _("Missing Header")
 
 	# Validate secret
@@ -43,6 +46,8 @@ def order_created(*args, **kwargs):
 	"""
 	Accepts payload data from WooCommerce "Order Created" webhook
 	"""
+	# Let's log everything first
+	frappe.log_error("WooCommerce Order Created Webhook", frappe.request.data)
 	valid, status, msg = validate_request()
 	if not valid:
 		return Response(response=msg, status=status)
