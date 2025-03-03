@@ -134,46 +134,49 @@ def sync_woocommerce_categories():
 	"""
 	Fetch WooCommerce product categories and store them in Frappe.
 	"""
+	filters = {
+		"enable_sync": 1
+	}
 
-	def fetch_categories(server):
-		"""Fetch categories from a given WooCommerce server."""
-		url = f"{server['woocommerce_server_url'].rstrip('/')}/wp-json/wc/v3/products/categories"
+	for name, in frappe.get_all("WooCommerce Server", filters=filters, as_list=True):
+		server = frappe.get_cached_doc("WooCommerce Server", name)
+		for category in fetch_categories(server):
+			create_or_update_category(category, server.name)
 
-		try:
-			response = requests.get(url, auth=(server["api_consumer_key"], server["api_consumer_secret"]), timeout=10)
-			response.raise_for_status()
-			return response.json()
-		except requests.exceptions.RequestException as e:
-			frappe.log_error(f"WooCommerce API request failed for {server['name']}: {str(e)}", "WooCommerce Sync Error")
-			return []
+def fetch_categories(server):
+	"""Fetch categories from a given WooCommerce server."""
+	url = f"{server.woocommerce_server_url.rstrip('/')}/wp-json/wc/v3/products/categories"
 
-	def create_or_update_category(category, server_name):
-		"""Create or update WooCommerce categories in Frappe."""
-		category_data = {
-			"doctype": "Woocommerce Category",
-			"id": str(category["id"]),
-			"category_name": category["name"],
-			"slug": category["slug"],
-			"woocommerce_server": server_name,
-		}
+	try:
+		response = requests.get(url, auth=(server.api_consumer_key, server.api_consumer_secret), timeout=10)
+		response.raise_for_status()
+		return response.json()
+	except requests.exceptions.RequestException as e:
+		frappe.log_error(f"WooCommerce API request failed for {server.name}: {str(e)}", "WooCommerce Sync Error")
+		return []
 
-		category_filters = {
-			"id": category["id"],
-			"woocommerce_server": server_name
-		}
+def create_or_update_category(category, server_name):
+	"""Create or update WooCommerce categories in Frappe."""
+	category_data = {
+		"doctype": "Woocommerce Category",
+		"id": str(category["id"]),
+		"category_name": category["name"],
+		"slug": category["slug"],
+		"woocommerce_server": server_name,
+	}
 
-		existing_category = frappe.db.exists("Woocommerce Category", category_filters)
+	category_filters = {
+		"id": category["id"],
+		"woocommerce_server": server_name
+	}
+
+	if existing_category := frappe.db.exists("Woocommerce Category", category_filters):
+		doc = frappe.get_doc("Woocommerce Category", existing_category)
+		doc.update(category_data)
+		doc.save()
+	else:
 		frappe.get_doc(category_data).save()
 
-	filters = {"enable_sync": 1}
-	fields = ["name", "woocommerce_server_url", "api_consumer_key", "api_consumer_secret"]
-
-	servers = frappe.get_list("WooCommerce Server", filters=filters, fields=fields, as_list=False)
-
-	for server in servers:
-		categories = fetch_categories(server)
-		for category in categories:
-			create_or_update_category(category, server["name"])
 
 @dataclass
 class ERPNextItemToSync:
