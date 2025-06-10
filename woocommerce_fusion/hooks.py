@@ -10,7 +10,7 @@ app_license = "GNU GPLv3"
 
 # include js, css files in header of desk.html
 # app_include_css = "/assets/woocommerce_fusion/css/woocommerce_fusion.css"
-# app_include_js = "/assets/woocommerce_fusion/js/woocommerce_fusion.js"
+app_include_js = "woocommerce_fusion.bundle.js"
 
 # include js, css files in header of web template
 # web_include_css = "/assets/woocommerce_fusion/css/woocommerce_fusion.css"
@@ -27,7 +27,12 @@ app_license = "GNU GPLv3"
 # page_js = {"page" : "public/js/file.js"}
 
 # include js in doctype views
-doctype_js = {"Sales Order": "public/js/selling/sales_order.js", "Item": "public/js/stock/item.js"}
+doctype_js = {
+	"Sales Order": "public/js/selling/sales_order.js",
+	"Item": "public/js/stock/item.js",
+	"Purchase Order": "public/js/buying/purchase_order.js",
+	"Stock Entry": "public/js/stock/stock_entry.js",
+}
 doctype_list_js = {"Sales Order": "public/js/selling/sales_order_list.js"}
 # doctype_tree_js = {"doctype" : "public/js/doctype_tree.js"}
 # doctype_calendar_js = {"doctype" : "public/js/doctype_calendar.js"}
@@ -53,10 +58,11 @@ doctype_list_js = {"Sales Order": "public/js/selling/sales_order_list.js"}
 # ----------
 
 # add methods and filters to jinja environment
-# jinja = {
-# 	"methods": "woocommerce_fusion.utils.jinja_methods",
-# 	"filters": "woocommerce_fusion.utils.jinja_filters"
-# }
+jinja = {
+	"methods": [
+        "woocommerce_fusion.utils.generate_qr",
+	]
+}
 
 # Installation
 # ------------
@@ -134,6 +140,10 @@ doc_events = {
 		"on_update": "woocommerce_fusion.tasks.sync_items.run_item_sync_from_hook",
 		"after_insert": "woocommerce_fusion.tasks.sync_items.run_item_sync_from_hook",
 	},
+	"Pick List": {
+		"on_submit": "woocommerce_fusion.overrides.stock.pick_list.on_submit",
+		"validate": "woocommerce_fusion.overrides.stock.pick_list.validate",
+	},
 }
 
 # Scheduled Tasks
@@ -165,6 +175,12 @@ scheduler_events = {
 
 before_tests = "woocommerce_fusion.setup.utils.before_tests"
 
+global_search_doctypes = {
+    "Default": [
+        {"doctype": "Pick List", "index": 40},
+    ],    
+}
+
 # Overriding Methods
 # ------------------------------
 #
@@ -176,7 +192,10 @@ before_tests = "woocommerce_fusion.setup.utils.before_tests"
 # along with any modifications made in other Frappe apps
 
 override_doctype_class = {
-	"Item": "woocommerce_fusion.overrides.item.Item"
+	"Item": "woocommerce_fusion.overrides.item.Item",
+	"Sales Order": "woocommerce_fusion.overrides.selling.sales_order.CustomSalesOrder",
+	"Warehouse": "woocommerce_fusion.overrides.stock.warehouse.Warehouse",
+	# "Material Request Item": "woocommerce_fusion.overrides.stock.material_request_item.MaterialRequestItem",
 }
 
 # override_doctype_dashboards = {
@@ -239,28 +258,14 @@ ignore_links_on_delete = [
 fixtures = [
 	{
 		"dt": "Custom Field",
-		"filters": [
-			[
-				"name",
-				"in",
-				(
-					"Customer-woocommerce_server",
-					"Customer-woocommerce_identifier",
-					"Customer-woocommerce_is_guest",
-					"Sales Order-woocommerce_id",
-					"Sales Order-woocommerce_server",
-					"Sales Order-woocommerce_status",
-					"Sales Order-woocommerce_payment_method",
-					"Sales Order-woocommerce_shipment_tracking_html",
-					"Sales Order-woocommerce_payment_entry",
-					"Sales Order-custom_attempted_woocommerce_auto_payment_entry",
-					"Sales Order-custom_woocommerce_last_sync_hash",
-					"Sales Order-custom_woocommerce_customer_note",
-					"Address-woocommerce_identifier",
-					"Item-woocommerce_servers",
-					"Item-custom_woocommerce_tab",
-				),
-			]
-		],
-	}
+		"filters": { "module": "WooCommerce"}
+	},
+	{
+		"dt": "Print Format",
+		"filters": { "module": "WooCommerce"}
+	},
+	{
+		"dt": "Property Setter",
+		"filters": { "module": "WooCommerce"}
+	},
 ]

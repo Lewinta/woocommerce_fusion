@@ -1,0 +1,237 @@
+{
+ "actions": [],
+ "allow_import": 1,
+ "allow_rename": 1,
+ "autoname": "field:mode_of_delivery",
+ "creation": "2025-06-03 00:51:13.553126",
+ "default_view": "List",
+ "doctype": "DocType",
+ "editable_grid": 1,
+ "engine": "InnoDB",
+ "field_order": [
+  "mode_of_delivery",
+  "carrier_company",
+  "service",
+  "main_cb",
+  "ship_type",
+  "shipping_code",
+  "carrier_account_code",
+  "carrier_description_sb",
+  "carrier_description",
+  "options_tab",
+  "residential",
+  "signature_required",
+  "options_cb",
+  "saturday_shipment",
+  "can_ship_po_box",
+  "address_tab",
+  "address_line_1",
+  "address_line_2",
+  "city",
+  "address_cb",
+  "state",
+  "pincode",
+  "country"
+ ],
+ "fields": [
+  {
+   "fieldname": "mode_of_delivery",
+   "fieldtype": "Data",
+   "label": "Mode of Delivery",
+   "reqd": 1,
+   "unique": 1
+  },
+  {
+   "fieldname": "service",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Service",
+   "options": "\nAir\nMiscellaneous\nGround\nPickup"
+  },
+  {
+   "default": "0",
+   "fieldname": "can_ship_po_box",
+   "fieldtype": "Check",
+   "label": "Can Ship PO Box"
+  },
+  {
+   "default": "0",
+   "fieldname": "residential",
+   "fieldtype": "Check",
+   "label": "Residential"
+  },
+  {
+   "default": "0",
+   "fieldname": "saturday_shipment",
+   "fieldtype": "Check",
+   "label": " Saturday Shipment"
+  },
+  {
+   "fieldname": "main_cb",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "ship_type",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Ship Type",
+   "options": "\nGround\nAll Other\nTwo Day\nNext Day",
+   "reqd": 1
+  },
+  {
+   "fieldname": "shipping_code",
+   "fieldtype": "Data",
+   "label": "Shipping Code"
+  },
+  {
+   "fieldname": "carrier_company",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Carrier Company",
+   "options": "\nUPS\nUSPS\nFeDex\nDHL",
+   "reqd": 1
+  },
+  {
+   "fieldname": "carrier_account_code",
+   "fieldtype": "Data",
+   "label": "Carrier Account Code"
+  },
+  {
+   "fieldname": "carrier_description_sb",
+   "fieldtype": "Section Break",
+   "label": "Carrier Description"
+  },
+  {
+   "fieldname": "carrier_description",
+   "fieldtype": "Small Text"
+  },
+  {
+   "fieldname": "options_tab",
+   "fieldtype": "Tab Break",
+   "label": "Options"
+  },
+  {
+   "default": "0",
+   "fieldname": "signature_required",
+   "fieldtype": "Check",
+   "label": " Signature Required"
+  },
+  {
+   "fieldname": "options_cb",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "address_tab",
+   "fieldtype": "Tab Break",
+   "label": "Address"
+  },
+  {
+   "fieldname": "address_line_1",
+   "fieldtype": "Data",
+   "label": "Address Line 1"
+  },
+  {
+   "fieldname": "address_line_2",
+   "fieldtype": "Data",
+   "label": "Address Line 2"
+  },
+  {
+   "fieldname": "city",
+   "fieldtype": "Data",
+   "label": "City"
+  },
+  {
+   "fieldname": "address_cb",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "state",
+   "fieldtype": "Data",
+   "label": "State"
+  },
+  {
+   "fieldname": "pincode",
+   "fieldtype": "Data",
+   "label": "Pincode"
+  },
+  {
+   "fieldname": "country",
+   "fieldtype": "Data",
+   "label": "Country"
+  }
+ ],
+ "index_web_pages_for_search": 1,
+ "links": [],
+ "modified": "2025-06-03 01:02:30.799443",
+ "modified_by": "Administrator",
+ "module": "WooCommerce",
+ "name": "Mode of Delivery",
+ "naming_rule": "By fieldname",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Sales Manager",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "create": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Sales User",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "create": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Stock User",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Stock Manager",
+   "share": 1,
+   "write": 1
+  }
+ ],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": []
+}

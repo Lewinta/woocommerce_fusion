@@ -143,6 +143,7 @@ def sync_woocommerce_categories():
 		for category in fetch_categories(server):
 			create_or_update_category(category, server.name)
 
+@frappe.whitelist()
 def fetch_categories(server):
 	"""Fetch categories from a given WooCommerce server."""
 	url = f"{server.woocommerce_server_url.rstrip('/')}/wp-json/wc/v3/products/categories"

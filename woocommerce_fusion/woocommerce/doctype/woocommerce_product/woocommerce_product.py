@@ -5,6 +5,8 @@ import json
 from dataclasses import dataclass
 from typing import Dict
 
+import frappe
+
 from woocommerce_fusion.woocommerce.woocommerce_api import WooCommerceAPI, WooCommerceResource
 
 
@@ -42,7 +44,7 @@ class WooCommerceProduct(WooCommerceResource):
 			args["metadata"] = {"parent_woocommerce_name": woocommerce_name}
 			variants = WooCommerceProduct.get_list_of_records(args)
 			products.extend(variants)
-
+		# frappe.msgprint(f"Products: {products}")
 		return products
 
 	def after_load_from_db(self, product: Dict):

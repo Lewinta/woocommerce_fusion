@@ -3,7 +3,9 @@ import json
 import frappe
 from erpnext.selling.doctype.sales_order.sales_order import SalesOrder
 from frappe import _
+from six import string_types
 from frappe.model.naming import get_default_naming_series, make_autoname
+from erpnext.selling.doctype.sales_order.sales_order import create_pick_list
 
 from woocommerce_fusion.tasks.sync_sales_orders import run_sales_order_sync
 from woocommerce_fusion.woocommerce.woocommerce_api import (
@@ -12,60 +14,76 @@ from woocommerce_fusion.woocommerce.woocommerce_api import (
 
 
 class CustomSalesOrder(SalesOrder):
-	"""
-	This class extends ERPNext's Sales Order doctype to override the autoname method
-	This allows us to name the Sales Order conditionally.
-
-	We also add logic to set the WooCommerce Status field on validate.
-	"""
-
-	def autoname(self):
+	@property
+	def tracking_number(self):
+		SL = frappe.qb.DocType("ShippingLog")
+		numbers = frappe.qb.from_(SL).select(SL.tracking_number).where(
+			SL.sales_order == self.name
+		).run(as_dict=True)
+		tracking_numbers = [d.tracking_number for d in numbers]
+		return "\n".join(tracking_numbers) if tracking_numbers else ""
+	
+	@property
+	def serial(self):
+		SL = frappe.qb.DocType("ShippingLog")
+		serials = frappe.qb.from_(SL).select(SL.serial).where(
+			SL.sales_order == self.name
+		).run(as_dict=True)
+		out = [d.serial for d in serials]
+		return "\n".join(out) if out else ""
+	
+	def validate(self):
+		# Let's call the parent validate method first
+		super(CustomSalesOrder, self).validate()
+		self.copy_address()
+		self.set_default_mode_of_delivery()
+	
+	def on_update_after_submit(self):
+		self.set_default_mode_of_delivery()
+	
+	def copy_address(self):
 		"""
-		If this is a WooCommerce-linked order, use the naming series defined in "WooCommerce Server"
-		or default to WEB[WooCommerce Order ID], e.g. WEB012142.
-		Else, name it normally.
+		Copies the billing and shipping address from the Address DocType.
 		"""
-		if self.woocommerce_id and self.woocommerce_server:
-			wc_server = frappe.get_cached_doc("WooCommerce Server", self.woocommerce_server)
-			if wc_server.sales_order_series:
-				self.name = make_autoname(key=wc_server.sales_order_series)
-			else:
-				# Get idx of site
-				wc_servers = frappe.get_all("WooCommerce Server", fields=["name", "creation"])
-				sorted_list = sorted(wc_servers, key=lambda server: server.creation)
-				idx = next(
-					(index for (index, d) in enumerate(sorted_list) if d["name"] == self.woocommerce_server), None
-				)
-				self.name = "WEB{}-{:06}".format(
-					idx + 1, int(self.woocommerce_id)
-				)  # Format with leading zeros to make it 6 digits
+		if not self.shipping_address_name:
+			return
+		shipping_address = frappe.get_doc("Address", self.shipping_address_name)
+		self.update({
+			"ship_to": shipping_address.address_title,
+			"address_line_1": shipping_address.address_line1,
+			"address_line_2": shipping_address.address_line2,
+			"city": shipping_address.city,
+			"state": shipping_address.state,
+			"pincode": shipping_address.pincode,
+			"country": shipping_address.country,
+		})
+	
+	def set_default_mode_of_delivery(self):
+		if self.mode_of_delivery:
+			return
+		# If Order total
+		# 0 - $99.99 USPS ground advantage
+		# $100 - $500 USPS priority
+		# $500+ UPS ground
+		if self.base_grand_total < 100:
+			self.mode_of_delivery = "USPS Ground Advantage"
+		elif self.base_grand_total < 500:
+			self.mode_of_delivery = "Priority Mail"
 		else:
-			naming_series = get_default_naming_series("Sales Order")
-			self.name = make_autoname(key=naming_series)
-
-	def on_change(self):
-		"""
-		This is called when a document's values has been changed (including db_set).
-		"""
-		# If Sales Order Status Sync is enabled, update the WooCommerce status of the Sales Order
-		if self.woocommerce_id and self.woocommerce_server:
-			wc_server = frappe.get_cached_doc("WooCommerce Server", self.woocommerce_server)
-			if wc_server.enable_so_status_sync:
-				mapping = next(
-					(
-						row
-						for row in wc_server.sales_order_status_map
-						if row.erpnext_sales_order_status == self.status
-					),
-					None,
-				)
-				if mapping:
-					if self.woocommerce_status != mapping.woocommerce_sales_order_status:
-						frappe.db.set_value(
-							"Sales Order", self.name, "woocommerce_status", mapping.woocommerce_sales_order_status
-						)
-						frappe.enqueue(run_sales_order_sync, queue="long", sales_order_name=self.name)
-
+			self.mode_of_delivery = "UPS Ground"
+		
+		if not frappe.db.exists("Mode of Delivery", self.mode_of_delivery):
+			frappe.throw(
+				_("Mode of Delivery '{0}' does not exist. Please create it before proceeding.").format(self.mode_of_delivery)
+			)
+		mode_of_delivery = frappe.get_doc("Mode of Delivery", self.mode_of_delivery)
+		self.update({
+			"carrier_id": mode_of_delivery.carrier_company,
+			"account_code": mode_of_delivery.carrier_account_code,
+			"signature_required": mode_of_delivery.signature_required,
+			"residential_destination": mode_of_delivery.residential,
+			"bill_transportation_to": "Sender",
+		})
 
 @frappe.whitelist()
 def get_woocommerce_order_shipment_trackings(doc):
@@ -80,7 +98,6 @@ def get_woocommerce_order_shipment_trackings(doc):
 
 	return []
 
-
 @frappe.whitelist()
 def update_woocommerce_order_shipment_trackings(doc, shipment_trackings):
 	"""
@@ -93,6 +110,24 @@ def update_woocommerce_order_shipment_trackings(doc, shipment_trackings):
 	wc_order.save()
 	return wc_order.shipment_trackings
 
+@frappe.whitelist()
+def create_pick_lists(sales_orders):
+	if isinstance(sales_orders, string_types):
+		sales_orders = json.loads(sales_orders)
+	success = []
+	try:
+		for name in sales_orders:
+			pick_list = create_pick_list(name)
+			pick_list.pick_manually = 1
+			pick_list.scan_mode = 1
+			pick_list.save()
+			success.append(name)
+		return success
+	except Exception as e:
+		title = _("Error creating Pick List")
+		message = _("An error occurred while creating the Pick List for Sales Order {0}: {1}").format(name, str(e))
+		message += f"<br><br>Traceback: {frappe.get_traceback()}"
+		frappe.log_error(title, message)
 
 def get_woocommerce_order(woocommerce_server, woocommerce_id):
 	"""
@@ -121,3 +156,4 @@ def get_woocommerce_order(woocommerce_server, woocommerce_id):
 	wc_order = frappe.get_doc({"doctype": "WooCommerce Order", "name": wc_order_name})
 	wc_order.load_from_db()
 	return wc_order
+

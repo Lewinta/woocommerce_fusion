@@ -106,5 +106,33 @@ frappe.listview_settings['Sales Order'] = {
 			erpnext.bulk_transaction_processing.create(listview, "Sales Order", "Payment Entry");
 		});
 
+		listview.page.add_action_item(__('Create Pick List'),  () => {
+            const selected = listview.get_checked_items();
+
+            if (!selected.length) {
+                frappe.msgprint(__('Please select at least one Sales Order'));
+                return;
+            }
+
+            const sales_orders = selected.map(row => row.name);
+
+            frappe.call({
+                method: "woocommerce_fusion.overrides.selling.sales_order.create_pick_lists",
+                args: {
+                    sales_orders
+                },
+				freeze: true,
+				freeze_message: __("Creating Pick List..."),
+            }).then(response => {
+				if (response.message) {
+					frappe.show_alert({
+						message: __(`${response.message.length} Pick Lists  created successfully`),
+						indicator: 'green'
+					});
+				} else {
+					frappe.msgprint(__('No Pick List created'));
+				}
+			});
+		});
 	}
 };

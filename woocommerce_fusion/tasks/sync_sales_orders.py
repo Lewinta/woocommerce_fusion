@@ -424,6 +424,7 @@ class SynchroniseSalesOrder(SynchroniseWooCommerce):
 
 		new_sales_order = frappe.new_doc("Sales Order")
 		new_sales_order.customer = customer_docname
+		new_sales_order.fulfillment_method = "WooCommerce"
 		new_sales_order.po_no = new_sales_order.woocommerce_id = wc_order.id
 		new_sales_order.custom_woocommerce_customer_note = wc_order.customer_note
 

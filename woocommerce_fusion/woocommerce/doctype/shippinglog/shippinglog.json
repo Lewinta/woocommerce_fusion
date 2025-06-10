@@ -1,0 +1,200 @@
+{
+ "actions": [],
+ "allow_import": 1,
+ "autoname": "autoincrement",
+ "creation": "2024-06-02 23:13:35.967901",
+ "default_view": "List",
+ "doctype": "DocType",
+ "editable_grid": 1,
+ "engine": "InnoDB",
+ "field_order": [
+  "sales_order",
+  "po_no",
+  "pick_list",
+  "invoice",
+  "transaction_id",
+  "serial",
+  "main_cb",
+  "carrier_id",
+  "service",
+  "ship_date",
+  "ship_time",
+  "ship_timestamp",
+  "tracking_number",
+  "status",
+  "totals_section",
+  "published_rate",
+  "t1_cb",
+  "shipping_charge",
+  "t2_cb",
+  "weight"
+ ],
+ "fields": [
+  {
+   "fieldname": "sales_order",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Sales Order",
+   "options": "Sales Order",
+   "search_index": 1
+  },
+  {
+   "fieldname": "pick_list",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Pick List",
+   "options": "Pick List",
+   "search_index": 1
+  },
+  {
+   "fieldname": "tracking_number",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Tracking Number",
+   "search_index": 1
+  },
+  {
+   "fieldname": "main_cb",
+   "fieldtype": "Column Break"
+  },
+  {
+   "default": "0.00",
+   "fieldname": "published_rate",
+   "fieldtype": "Currency",
+   "label": "Published Rate"
+  },
+  {
+   "fieldname": "shipping_charge",
+   "fieldtype": "Currency",
+   "label": "Shipping Charge"
+  },
+  {
+   "default": "0.0",
+   "fieldname": "weight",
+   "fieldtype": "Float",
+   "label": "Weight"
+  },
+  {
+   "fieldname": "ship_date",
+   "fieldtype": "Date",
+   "in_standard_filter": 1,
+   "label": "Ship Date",
+   "reqd": 1,
+   "search_index": 1
+  },
+  {
+   "fieldname": "totals_section",
+   "fieldtype": "Section Break",
+   "label": "Totals"
+  },
+  {
+   "fieldname": "t1_cb",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "t2_cb",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "carrier_id",
+   "fieldtype": "Data",
+   "label": "Carrier ID"
+  },
+  {
+   "fieldname": "invoice",
+   "fieldtype": "Link",
+   "label": "Invoice",
+   "options": "Sales Invoice"
+  },
+  {
+   "fetch_from": "sales_order.po_no",
+   "fieldname": "po_no",
+   "fieldtype": "Data",
+   "label": "Purchase Order"
+  },
+  {
+   "fieldname": "ship_time",
+   "fieldtype": "Time",
+   "label": "Ship Time"
+  },
+  {
+   "fieldname": "ship_timestamp",
+   "fieldtype": "Datetime",
+   "hidden": 1,
+   "label": "Ship Timestamp"
+  },
+  {
+   "fieldname": "transaction_id",
+   "fieldtype": "Data",
+   "label": "Transaction ID"
+  },
+  {
+   "fieldname": "status",
+   "fieldtype": "Data",
+   "label": "Status"
+  },
+  {
+   "fieldname": "service",
+   "fieldtype": "Data",
+   "label": "Service"
+  },
+  {
+   "fieldname": "serial",
+   "fieldtype": "Data",
+   "label": "Serial"
+  }
+ ],
+ "index_web_pages_for_search": 1,
+ "links": [],
+ "modified": "2025-06-05 00:01:52.076064",
+ "modified_by": "Administrator",
+ "module": "WooCommerce",
+ "name": "ShippingLog",
+ "naming_rule": "Autoincrement",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Stock Manager",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Sales Manager",
+   "share": 1
+  }
+ ],
+ "show_title_field_in_link": 1,
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": [],
+ "title_field": "tracking_number",
+ "track_changes": 1,
+ "track_seen": 1
+}
