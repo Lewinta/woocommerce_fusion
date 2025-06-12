@@ -71,6 +71,8 @@ def update_stock_levels_on_woocommerce_site(item_code):
 	if len(item.woocommerce_servers) == 0 or not item.is_stock_item or item.disabled:
 		return False
 	else:
+		from frappe.utils.nestedset import get_descendants_of
+
 		bins = frappe.get_list(
 			"Bin", {"item_code": item_code}, ["name", "warehouse", "reserved_qty", "actual_qty"]
 		)
@@ -97,13 +99,21 @@ def update_stock_levels_on_woocommerce_site(item_code):
 					timeout=40,
 				)
 
-				# Sum all quantities from select warehouses and round the total down (WooCommerce API doesn't accept float values)
+				# Build list of all relevant warehouses, expanding groups
+				relevant_warehouses = set()
+				for row in wc_server.warehouses:
+					if frappe.db.get_value("Warehouse", row.warehouse, "is_group"):
+						descendants = get_descendants_of("Warehouse", row.warehouse)
+						relevant_warehouses.update(descendants)
+					else:
+						relevant_warehouses.add(row.warehouse)
+
 				data_to_post = {
 					"stock_quantity": math.floor(
 						sum(
 							bin.actual_qty
 							for bin in bins
-							if bin.warehouse in [row.warehouse for row in wc_server.warehouses]
+							if bin.warehouse in relevant_warehouses
 						)
 					)
 				}
