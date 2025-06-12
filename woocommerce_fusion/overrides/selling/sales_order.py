@@ -32,6 +32,10 @@ class CustomSalesOrder(SalesOrder):
 		out = [d.serial for d in serials]
 		return "\n".join(out) if out else ""
 	
+	@property
+	def document(self):
+		return self.name
+	
 	def validate(self):
 		# Let's call the parent validate method first
 		super(CustomSalesOrder, self).validate()

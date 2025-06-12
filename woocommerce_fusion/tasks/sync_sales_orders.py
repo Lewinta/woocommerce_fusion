@@ -7,7 +7,7 @@ from erpnext.selling.doctype.sales_order.sales_order import SalesOrder
 from frappe import _
 from frappe.utils import get_datetime
 from frappe.utils.data import cstr, now
-
+from erpnext.selling.doctype.sales_order.sales_order import make_sales_invoice
 from woocommerce_fusion.exceptions import SyncDisabledError
 from woocommerce_fusion.tasks.sync import SynchroniseWooCommerce
 from woocommerce_fusion.tasks.sync_items import run_item_sync
@@ -248,9 +248,9 @@ class SynchroniseSalesOrder(SynchroniseWooCommerce):
 				sales_order.woocommerce_payment_method = payment_method
 				so_dirty = True
 
-			if not sales_order.woocommerce_payment_entry:
-				if self.create_and_link_payment_entry(woocommerce_order, sales_order):
-					so_dirty = True
+			# if not sales_order.woocommerce_payment_entry:
+			# 	if self.create_and_link_payment_entry(woocommerce_order, sales_order):
+			# 		so_dirty = True
 
 			if so_dirty:
 				sales_order.flags.created_by_sync = True
@@ -460,7 +460,8 @@ class SynchroniseSalesOrder(SynchroniseWooCommerce):
 					),
 					None,
 				)
-				new_sales_order.shipping_rule = shipping_rule_mapping.shipping_rule
+				if shipping_rule_mapping:
+					new_sales_order.shipping_rule = shipping_rule_mapping.shipping_rule
 
 		self.set_items_in_sales_order(new_sales_order, wc_order)
 		new_sales_order.flags.ignore_mandatory = True
@@ -470,8 +471,13 @@ class SynchroniseSalesOrder(SynchroniseWooCommerce):
 			new_sales_order.submit()
 
 		new_sales_order.reload()
-		self.create_and_link_payment_entry(wc_order, new_sales_order)
+		# self.create_and_link_payment_entry(wc_order, new_sales_order)
 		new_sales_order.save()
+		sinv = make_sales_invoice(new_sales_order.name, ignore_permissions=True)
+		sinv.set_missing_values()
+		sinv.calculate_taxes_and_totals()
+		sinv.save(ignore_permissions=True)
+		sinv.submit()
 
 	def create_or_link_customer_and_address(self, wc_order: WooCommerceOrder) -> str:
 		"""

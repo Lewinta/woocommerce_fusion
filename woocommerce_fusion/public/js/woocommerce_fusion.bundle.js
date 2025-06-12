@@ -206,83 +206,28 @@
             size: 'large',
             fields: [
                 {
-                    fieldtype: 'Section Break',
-                    label: __('Document Selection')
-                },
-                {
-                    fieldtype: 'Link',
+                    fieldtype: 'Select',
                     fieldname: 'doctype',
                     label: __('Select Document Type'),
-                    options: 'DocType',
-                    reqd: 1,
-                    description: __('Choose the type of document you want to work with'),
-                    get_query: function() {
-                        return {
-                            filters: {
-                                'issingle': 0,
-                                'istable': 0,
-                                'module': ['not in', ['Core']]
-                            }
-                        };
-                    },
-                    onchange: function() {
-                        const selectedDoctype = dialog.get_value('doctype');
-                        if (selectedDoctype) {
-                            // Update the scan field description based on selected doctype
-                            dialog.set_df_property('barcode_data', 'description', 
-                                __('Scan or enter barcode for {0}', [selectedDoctype]));
-                        }
-                    }
-                },
-                {
-                    fieldtype: 'Column Break'
-                },
-                {
-                    fieldtype: 'HTML',
-                    fieldname: 'doctype_info',
-                    options: '<div class="text-muted" style="padding: 10px; border-radius: 4px; background-color: #f8f9fa;"><i class="fa fa-info-circle"></i> Select a document type to enable scanning functionality</div>'
-                },
-                {
-                    fieldtype: 'Section Break',
-                    label: __('Barcode Scanner')
+                    options: '\nSales Order\nPick List\nItem',
+                    reqd: 0, 
                 },
                 {
                     fieldtype: 'Data',
-                    fieldname: 'barcode_data',
-                    label: __('Scan Barcode'),
+                    fieldname: 'document',
+                    label: __('Scan Document'),
                     options: 'Barcode',
-                    description: __('Use the scanner or type the barcode manually'),
-                    onchange: function() {
-                        const barcode = dialog.get_value('barcode_data');
-                        const doctype = dialog.get_value('doctype');
+                    onchange: () => {
+                        const {doctype, document} = dialog.get_values();
+                        if (!document)
+                            return;
                         
-                        if (barcode && doctype) {
-                            // Process the scanned barcode
-                            processScannedBarcode(barcode, doctype, dialog);
-                        }
+                        goToDocument(document, doctype);
+                        
                     }
                 },
-                {
-                    fieldtype: 'Column Break'
-                },
-                {
-                    fieldtype: 'Button',
-                    fieldname: 'camera_scan',
-                    label: __('Open Camera Scanner'),
-                    click: function() {
-                        openCameraScanner(dialog);
-                    }
-                },
-                {
-                    fieldtype: 'Section Break'
-                },
-                {
-                    fieldtype: 'HTML',
-                    fieldname: 'scan_results',
-                    options: '<div id="scan-results-area" style="min-height: 100px; padding: 15px; border: 1px dashed #d1d8dd; border-radius: 4px; background-color: #fafbfc;"><div class="text-center text-muted"><i class="fa fa-search"></i><br><br>Scan results will appear here</div></div>'
-                }
             ],
-            primary_action_label: __('Process Scan'),
+            primary_action_label: __('Open Document'),
             primary_action: function() {
                 const values = dialog.get_values();
                 if (values.doctype && values.barcode_data) {
@@ -371,6 +316,28 @@
             
             dialog.hide();
         }, 1500);
+    }
+
+    function goToDocument(name, doctype) {
+        const method = "woocommerce_fusion.utils.get_document"
+        const opts = {
+            method,
+            args: {name, doctype},
+        }
+        frappe.call(opts).then(
+            ({message}) => {
+                if (message) {
+                    frappe.set_route('Form', message.doctype, message.name);
+                }
+                else {
+                    const msg = `${name} does not exist`;
+                    cur_dialog.set_df_property('document', 'description', msg);
+                }
+            }
+        );
+        
+            
+        
     }
 
     // CSS for enhanced styling

@@ -1,11 +1,28 @@
-(()=>{(function(){$(document).ready(function(){typeof frappe!="undefined"&&!window.location.pathname.includes("/desk")?setTimeout(a,1e3):typeof frappe!="undefined"&&a()});function a(){if(document.getElementById("wc-fusion-floating-btn"))return;let e=document.createElement("div");e.id="wc-fusion-floating-btn",e.innerHTML=`
+(() => {
+  // ../woocommerce_fusion/woocommerce_fusion/public/js/woocommerce_fusion.bundle.js
+  (function() {
+    $(document).ready(function() {
+      if (typeof frappe !== "undefined" && !window.location.pathname.includes("/desk")) {
+        setTimeout(initFloatingButton, 1e3);
+      } else if (typeof frappe !== "undefined") {
+        initFloatingButton();
+      }
+    });
+    function initFloatingButton() {
+      if (document.getElementById("wc-fusion-floating-btn")) {
+        return;
+      }
+      const floatingBtn = document.createElement("div");
+      floatingBtn.id = "wc-fusion-floating-btn";
+      floatingBtn.innerHTML = `
             <div class="floating-btn-content">
                 <svg class="scan-icon" width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
                     <path d="M3 7V5C3 3.89543 3.89543 3 5 3H7M3 17V19C3 20.1046 3.89543 21 5 21H7M21 7V5C21 3.89543 20.1046 3 19 3H17M21 17V19C21 20.1046 20.1046 21 19 21H17M12 8V16M8 12H16" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
                 </svg>
                 <span class="btn-text">Scan</span>
             </div>
-        `;let t=`
+        `;
+      const styles = `
             #wc-fusion-floating-btn {
                 position: fixed;
                 bottom: 30px;
@@ -162,22 +179,120 @@
                     height: 20px;
                 }
             }
-        `,n=document.createElement("style");n.textContent=t,document.head.appendChild(n),e.addEventListener("click",r),document.body.appendChild(e)}function r(){let e=new frappe.ui.Dialog({title:__("Quick Scan & Document Selection"),size:"large",fields:[{fieldtype:"Section Break",label:__("Document Selection")},{fieldtype:"Link",fieldname:"doctype",label:__("Select Document Type"),options:"DocType",reqd:1,description:__("Choose the type of document you want to work with"),get_query:function(){return{filters:{issingle:0,istable:0,module:["not in",["Core"]]}}},onchange:function(){let t=e.get_value("doctype");t&&e.set_df_property("barcode_data","description",__("Scan or enter barcode for {0}",[t]))}},{fieldtype:"Column Break"},{fieldtype:"HTML",fieldname:"doctype_info",options:'<div class="text-muted" style="padding: 10px; border-radius: 4px; background-color: #f8f9fa;"><i class="fa fa-info-circle"></i> Select a document type to enable scanning functionality</div>'},{fieldtype:"Section Break",label:__("Barcode Scanner")},{fieldtype:"Data",fieldname:"barcode_data",label:__("Scan Barcode"),options:"Barcode",description:__("Use the scanner or type the barcode manually"),onchange:function(){let t=e.get_value("barcode_data"),n=e.get_value("doctype");t&&n&&c(t,n,e)}},{fieldtype:"Column Break"},{fieldtype:"Button",fieldname:"camera_scan",label:__("Open Camera Scanner"),click:function(){s(e)}},{fieldtype:"Section Break"},{fieldtype:"HTML",fieldname:"scan_results",options:'<div id="scan-results-area" style="min-height: 100px; padding: 15px; border: 1px dashed #d1d8dd; border-radius: 4px; background-color: #fafbfc;"><div class="text-center text-muted"><i class="fa fa-search"></i><br><br>Scan results will appear here</div></div>'}],primary_action_label:__("Process Scan"),primary_action:function(){let t=e.get_values();t.doctype&&t.barcode_data?d(t,e):frappe.msgprint(__("Please select a document type and scan a barcode"))},secondary_action_label:__("Close"),secondary_action:function(){e.hide()}});e.show(),setTimeout(()=>{e.fields_dict.doctype.$input.focus()},500)}function s(e){frappe.ui.Scanner?new frappe.ui.Scanner({dialog:!0,multiple:!1,on_scan:function(t){t&&t.result&&t.result.text&&(e.set_value("barcode_data",t.result.text),e.fields_dict.barcode_data.$input.trigger("change"))}}):frappe.msgprint(__("Camera scanner is not available. Please enter the barcode manually."))}function c(e,t,n){let i=document.getElementById("scan-results-area");i&&(i.innerHTML=`
+        `;
+      const styleSheet = document.createElement("style");
+      styleSheet.textContent = styles;
+      document.head.appendChild(styleSheet);
+      floatingBtn.addEventListener("click", openScanDialog);
+      document.body.appendChild(floatingBtn);
+    }
+    function openScanDialog() {
+      const dialog = new frappe.ui.Dialog({
+        title: __("Quick Scan & Document Selection"),
+        size: "large",
+        fields: [
+          {
+            fieldtype: "Select",
+            fieldname: "doctype",
+            label: __("Select Document Type"),
+            options: "\nSales Order\nPick List",
+            reqd: 0
+          },
+          {
+            fieldtype: "Data",
+            fieldname: "document",
+            label: __("Scan Document"),
+            options: "Barcode",
+            onchange: () => {
+              const { doctype, document: document2 } = dialog.get_values();
+              if (!document2)
+                return;
+              goToDocument(document2, doctype);
+            }
+          }
+        ],
+        primary_action_label: __("Open Document"),
+        primary_action: function() {
+          const values = dialog.get_values();
+          if (values.doctype && values.barcode_data) {
+            processScan(values, dialog);
+          } else {
+            frappe.msgprint(__("Please select a document type and scan a barcode"));
+          }
+        },
+        secondary_action_label: __("Close"),
+        secondary_action: function() {
+          dialog.hide();
+        }
+      });
+      dialog.show();
+      setTimeout(() => {
+        dialog.fields_dict.doctype.$input.focus();
+      }, 500);
+    }
+    function openCameraScanner(dialog) {
+      if (frappe.ui.Scanner) {
+        new frappe.ui.Scanner({
+          dialog: true,
+          multiple: false,
+          on_scan: function(data) {
+            if (data && data.result && data.result.text) {
+              dialog.set_value("barcode_data", data.result.text);
+              dialog.fields_dict.barcode_data.$input.trigger("change");
+            }
+          }
+        });
+      } else {
+        frappe.msgprint(__("Camera scanner is not available. Please enter the barcode manually."));
+      }
+    }
+    function processScannedBarcode(barcode, doctype, dialog) {
+      const resultsArea = document.getElementById("scan-results-area");
+      if (resultsArea) {
+        resultsArea.innerHTML = `
                 <div class="scan-result-item">
                     <div class="d-flex align-items-center">
                         <div class="mr-3">
                             <i class="fa fa-barcode text-primary" style="font-size: 24px;"></i>
                         </div>
                         <div class="flex-1">
-                            <strong>Scanned:</strong> ${e}<br>
-                            <small class="text-muted">Document Type: ${t}</small>
+                            <strong>Scanned:</strong> ${barcode}<br>
+                            <small class="text-muted">Document Type: ${doctype}</small>
                         </div>
                         <div class="ml-3">
                             <span class="badge badge-success">Ready</span>
                         </div>
                     </div>
                 </div>
-            `)}function d(e,t){t.set_message(__("Processing scan...")),setTimeout(()=>{frappe.show_alert({message:__("Scan processed successfully! Barcode: {0}, DocType: {1}",[e.barcode_data,e.doctype]),indicator:"green"}),t.hide()},1500)}let l=`
+            `;
+      }
+    }
+    function processScan(values, dialog) {
+      dialog.set_message(__("Processing scan..."));
+      setTimeout(() => {
+        frappe.show_alert({
+          message: __("Scan processed successfully! Barcode: {0}, DocType: {1}", [values.barcode_data, values.doctype]),
+          indicator: "green"
+        });
+        dialog.hide();
+      }, 1500);
+    }
+    function goToDocument(name, doctype) {
+      const method = "woocommerce_fusion.utils.get_document";
+      const opts = {
+        method,
+        args: { name, doctype }
+      };
+      frappe.call(opts).then(({ message }) => {
+        if (message) {
+          frappe.set_route("Form", message.doctype, message.name);
+        } else {
+          const msg = `${name} does not exist`;
+          cur_dialog.set_df_property("document", "description", msg);
+        }
+      });
+    }
+    const additionalStyles = `
         .scan-result-item {
             padding: 12px;
             border: 1px solid #e2e8f0;
@@ -215,5 +330,10 @@
         .frappe-dialog .btn-modal-close:hover {
             opacity: 1;
         }
-    `,o=document.createElement("style");o.textContent=l,document.head.appendChild(o)})();})();
-//# sourceMappingURL=woocommerce_fusion.bundle.IV4HHT4O.js.map
+    `;
+    const additionalStyleSheet = document.createElement("style");
+    additionalStyleSheet.textContent = additionalStyles;
+    document.head.appendChild(additionalStyleSheet);
+  })();
+})();
+//# sourceMappingURL=woocommerce_fusion.bundle.MH4YZKMC.js.map

@@ -342,14 +342,14 @@ class SynchroniseItem(SynchroniseWooCommerce):
 		Update the ERPNext Item with fields from it's corresponding WooCommerce Product
 		"""
 		item_dirty = False
-		if item.item.item_name != woocommerce_product.woocommerce_name:
-			item.item.item_name = woocommerce_product.woocommerce_name
-			item_dirty = True
+		# if item.item.item_name != woocommerce_product.woocommerce_name:
+		# 	item.item.item_name = woocommerce_product.woocommerce_name
+		# 	item_dirty = True
 
 		fields_updated, item.item = self.set_item_fields(item=item.item)
 
 		wc_server = frappe.get_cached_doc("WooCommerce Server", woocommerce_product.woocommerce_server)
-		if wc_server.enable_image_sync:
+		if wc_server.enable_image_sync and woocommerce_product.images:
 			wc_product_images = json.loads(woocommerce_product.images)
 			if len(wc_product_images) > 0:
 				if item.item.image != wc_product_images[0]["src"]:
@@ -406,9 +406,9 @@ class SynchroniseItem(SynchroniseWooCommerce):
 		wc_product_dirty = False
 
 		# Update properties
-		if wc_product.woocommerce_name != item.item.item_name:
-			wc_product.woocommerce_name = item.item.item_name
-			wc_product_dirty = True
+		# if wc_product.woocommerce_name != item.item.item_name:
+		# 	wc_product.woocommerce_name = item.item.item_name
+		# 	wc_product_dirty = True
 
 		product_fields_changed, wc_product = self.set_product_fields(wc_product, item)
 		if product_fields_changed:
@@ -541,14 +541,20 @@ class SynchroniseItem(SynchroniseWooCommerce):
 		self.update_item_categories_from_woocommerce(wc_product, item) 
 
 		if wc_server.enable_image_sync:
-			wc_product_images = json.loads(wc_product.images)
+			if wc_product.images:
+				wc_product_images = json.loads(wc_product.images)
 			if len(wc_product_images) > 0:
 				item.image = wc_product_images[0]["src"]
 
 		modified, item = self.set_item_fields(item=item)
 		item.flags.created_by_sync = True
 
-		item.insert()
+		if name := frappe.db.exists("Item", item.item_code):
+			# item = frappe.get_doc("Item", name)
+			# item.save()
+			pass
+		else:
+			item.insert()
 
 		self.item = ERPNextItemToSync(
 			item=item,
@@ -888,4 +894,3 @@ def prepare_category(category):
 		"name":	category.category,
 		"slug": category.slug
 	}, sort_keys=True)
-
