@@ -33,6 +33,7 @@ doctype_js = {
 	"Purchase Order": "public/js/buying/purchase_order.js",
 	"Stock Entry": "public/js/stock/stock_entry.js",
 	"Material Request": "public/js/stock/material_request.js",
+	"Mode of Payment": "public/js/accounts/mode_of_payment.js",
 }
 doctype_list_js = {"Sales Order": "public/js/selling/sales_order_list.js"}
 # doctype_tree_js = {"doctype" : "public/js/doctype_tree.js"}
@@ -151,9 +152,9 @@ doc_events = {
 # ---------------
 
 scheduler_events = {
-	# 	"all": [
-	# 		"woocommerce_fusion.tasks.all"
-	# 	],
+		"all": [
+			"woocommerce_fusion.woocommerce.doctype.shippinglog.shippinglog.publish_shipping_to_ecommerce"
+		],
 	# 	"weekly": [
 	# 		"woocommerce_fusion.tasks.daily"
 	# 	],
@@ -196,7 +197,7 @@ override_doctype_class = {
 	"Item": "woocommerce_fusion.overrides.item.Item",
 	"Sales Order": "woocommerce_fusion.overrides.selling.sales_order.CustomSalesOrder",
 	"Warehouse": "woocommerce_fusion.overrides.stock.warehouse.Warehouse",
-	# "Material Request Item": "woocommerce_fusion.overrides.stock.material_request_item.MaterialRequestItem",
+	"Bin": "woocommerce_fusion.overrides.stock.bin.Bin",
 }
 
 # override_doctype_dashboards = {

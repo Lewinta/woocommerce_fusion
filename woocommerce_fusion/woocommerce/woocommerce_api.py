@@ -490,6 +490,7 @@ def get_wc_parameters_from_filters(filters):
 		"name",
 		"status",
 		"woocommerce_server",
+		"sku",
 	]
 
 	params = {}
@@ -523,6 +524,10 @@ def get_wc_parameters_from_filters(filters):
 			continue
 		if filter[1] == "name" and filter[2] == "like":
 			# e.g. ['WooCommerce Order', 'name', 'like', '%11%']
+			params["search"] = filter[3].strip("%")
+			continue
+		if filter[1] == "sku" and filter[2] == "like":
+			# e.g. ['WooCommerce Order', 'sku', 'like', '%FST%']
 			params["search"] = filter[3].strip("%")
 			continue
 		if filter[1] == "status" and filter[2] == "=":

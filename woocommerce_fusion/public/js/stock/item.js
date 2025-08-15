@@ -14,6 +14,13 @@ frappe.ui.form.on('Item', {
 		frm.add_custom_button(__("Sync this Item with WooCommerce"), function () {
 			frm.trigger("sync_item");
 		}, __('Actions'));
+		
+		if (frm.doc.woocommerce_servers && frm.doc.woocommerce_servers.length >=1) {
+			// Add a custom button to View Item with WooCommerce
+			frm.add_custom_button(__("View WooCommerce Product"), function () {
+				frappe.set_route("Form", "WooCommerce Product", `${frm.doc.woocommerce_servers[0].woocommerce_server}~${frm.doc.woocommerce_servers[0].woocommerce_id}` );		
+			}, __('View'));
+		}
 	},
 
 	sync_item_stock: function(frm) {

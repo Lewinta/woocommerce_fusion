@@ -1,11 +1,13 @@
 import json
-
 import frappe
 from erpnext.selling.doctype.sales_order.sales_order import SalesOrder
 from frappe import _
 from six import string_types
+from frappe.query_builder import Order
+from frappe.query_builder import Criterion, functions as fn
 from frappe.model.naming import get_default_naming_series, make_autoname
 from erpnext.selling.doctype.sales_order.sales_order import create_pick_list
+from frappe.utils.nestedset import get_descendants_of
 
 from woocommerce_fusion.tasks.sync_sales_orders import run_sales_order_sync
 from woocommerce_fusion.woocommerce.woocommerce_api import (
@@ -26,10 +28,19 @@ class CustomSalesOrder(SalesOrder):
 	@property
 	def serial(self):
 		SL = frappe.qb.DocType("ShippingLog")
-		serials = frappe.qb.from_(SL).select(SL.serial).where(
+		serials = frappe.qb.from_(SL).select(fn.Coalesce(SL.serial, '-').as_('serial')).where(
 			SL.sales_order == self.name
 		).run(as_dict=True)
-		out = [d.serial for d in serials]
+		out = [d.get("serial", "") for d in serials]
+		return "\n".join(out) if out else ""
+	
+	@property
+	def date_shipped(self):
+		SL = frappe.qb.DocType("ShippingLog")
+		data = frappe.qb.from_(SL).select(SL.ship_date).where(
+			SL.sales_order == self.name
+		).run(as_dict=True)
+		out = [str(d.get("ship_date", "")) for d in data]
 		return "\n".join(out) if out else ""
 	
 	@property
@@ -130,7 +141,7 @@ class CustomSalesOrder(SalesOrder):
 		else:
 			frappe.log_error(
 				_("No stock available for item {0}").format(item.item_code),
-				_("Sales Order {0}").format(self.name)
+				_("Sales Order :\n{0}").format(self.as_json())
 			)
  		
 
@@ -141,19 +152,21 @@ class CustomSalesOrder(SalesOrder):
 		"""
 		if not item.item_code:
 			return None
+		
+		B = frappe.qb.DocType("Bin")
+		valid_warehouses = get_descendants_of("Warehouse", """Kenzie's Main - KO""")
 
-		warehouses = frappe.get_all(
-			"Bin",
-			fields=["warehouse"],
-			filters={
-				"item_code": item.item_code,
-				"actual_qty": [">", item.qty or 0],
-			},
-			order_by="actual_qty DESC", # Ideally this should be FIFO
-			limit=1
-		)
+		conditions = [
+			B.item_code == item.item_code,
+			B.actual_qty > 0,
+			B.warehouse.isin(valid_warehouses),
+			B.warehouse != "Receiving - KO",
+		]
+		warehouses = frappe.qb.from_(B).select(B.warehouse).where(
+			Criterion.all(conditions)
+		).orderby(B.actual_qty, Order.desc).limit(1).run(as_dict=True)
 
-		return warehouses[0].warehouse if warehouses else None
+		return warehouses[0].warehouse if warehouses else 'Receiving - KO'
 
 	def on_update_after_submit(self):
 		self.set_default_mode_of_delivery()
@@ -176,7 +189,7 @@ class CustomSalesOrder(SalesOrder):
 		})
 	
 	def set_default_mode_of_delivery(self):
-		if self.mode_of_delivery:
+		if self.mode_of_delivery and self.mode_of_delivery != "Free shipping":
 			return
 		# If Order total
 		# 0 - $99.99 USPS ground advantage
@@ -185,7 +198,7 @@ class CustomSalesOrder(SalesOrder):
 		if self.base_grand_total < 100:
 			self.mode_of_delivery = "USPS Ground Advantage"
 		elif self.base_grand_total < 500:
-			self.mode_of_delivery = "Priority Mail"
+			self.mode_of_delivery = "USPS Priority Mail"
 		else:
 			self.mode_of_delivery = "UPS Ground"
 		

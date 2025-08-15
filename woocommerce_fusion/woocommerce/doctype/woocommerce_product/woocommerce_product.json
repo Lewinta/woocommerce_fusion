@@ -45,12 +45,13 @@
   "total_sales",
   "inventory_tab",
   "sku",
-  "manage_stock",
   "stock_status",
   "backorders",
+  "manage_stock",
   "backorders_allowed",
   "backordered",
   "sold_individually",
+  "inventory_cb_column",
   "weight",
   "dimensions",
   "shipping_required",
@@ -488,12 +489,16 @@
    "fieldtype": "Float",
    "label": "Regular Price",
    "reqd": 1
+  },
+  {
+   "fieldname": "inventory_cb_column",
+   "fieldtype": "Column Break"
   }
  ],
  "index_web_pages_for_search": 1,
  "is_virtual": 1,
  "links": [],
- "modified": "2024-09-01 18:09:12.980102",
+ "modified": "2025-06-28 09:47:34.978229",
  "modified_by": "Administrator",
  "module": "WooCommerce",
  "name": "WooCommerce Product",

@@ -8,20 +8,20 @@ frappe.ui.form.on('Sales Order', {
 		}
 
 		// Add a custom button to allow adding or editing Shipment Trackings
-		if (frm.doc.woocommerce_id){
-			frm.add_custom_button(__("Edit WooCommerce Shipment Trackings"), function () {
-				frm.trigger("prompt_user_for_shipment_trackings");
-			}, __('Actions'));
-		}
+		// if (frm.doc.woocommerce_id){
+		// 	frm.add_custom_button(__("Edit WooCommerce Shipment Trackings"), function () {
+		// 		frm.trigger("prompt_user_for_shipment_trackings");
+		// 	}, __('Actions'));
+		// }
 
-		if (frm.doc.woocommerce_id && frm.doc.woocommerce_server && ["Shipped", "Delivered"].includes(frm.doc.woocommerce_status)){
-			frm.trigger("load_shipment_trackings_table");
-		}
-		else {
-			// Clean up Shipment Tracking HTML
-			frm.doc.woocommerce_shipment_trackings = [];
-			frm.set_df_property('woocommerce_shipment_tracking_html', 'options', " ");
-		}
+		// if (frm.doc.woocommerce_id && frm.doc.woocommerce_server && ["Shipped", "Delivered"].includes(frm.doc.woocommerce_status)){
+		// 	frm.trigger("load_shipment_trackings_table");
+		// }
+		// else {
+		// 	// Clean up Shipment Tracking HTML
+		// 	frm.doc.woocommerce_shipment_trackings = [];
+		// 	frm.set_df_property('woocommerce_shipment_tracking_html', 'options', " ");
+		// }
 	},
 
 	sync_sales_order: function(frm) {

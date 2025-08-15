@@ -36,6 +36,7 @@
   "uom",
   "section_break_accounting",
   "tax_account",
+  "additional_discount_account",
   "use_actual_tax_type",
   "sales_taxes_and_charges_template",
   "column_break_4b4vn",
@@ -423,7 +424,7 @@
   {
    "fieldname": "sync_sales_orders",
    "fieldtype": "HTML",
-   "options": "\n\t\t\t<div class=\"checkbox\">\n\t\t\t\t<label>\n\t\t\t\t\t<span class=\"input-area\" style=\"display: none;\"></span>\n\t\t\t\t\t<span class=\"disp-area\"><input type=\"checkbox\" disabled class=\"disabled-selected\"></span>\n\t\t\t\t\t<span class=\"label-area\">Synchronise Sales Orders</span>\n\t\t\t\t\t<span class=\"ml-1 help\"></span>\n\t\t\t\t</label>\n\t\t\t\t<p class=\"help-box small text-muted\">Create new ERPNext Sales Orders for existing and new WooCommerce Sales Orders. This can not be turned off.</p>\n\t\t\t</div>\n\t\t<span class=\"tooltip-content\">enable_so_sync</span>"
+   "options": "\n\t\t\t<div class=\"checkbox\">\n\t\t\t\t<label>\n\t\t\t\t\t<span class=\"input-area\" style=\"display: none;\"></span>\n\t\t\t\t\t<span class=\"disp-area\"><input class=\"disabled-selected\" disabled type=\"checkbox\"></span>\n\t\t\t\t\t<span class=\"label-area\">Synchronise Sales Orders</span>\n\t\t\t\t\t<span class=\"ml-1 help\"></span>\n\t\t\t\t</label>\n\t\t\t\t<p class=\"help-box small text-muted\">Create new ERPNext Sales Orders for existing and new WooCommerce Sales Orders. This can not be turned off.</p>\n\t\t\t</div>\n\t\t<span class=\"tooltip-content\">enable_so_sync</span>"
   },
   {
    "fieldname": "section_addresses",
@@ -488,11 +489,17 @@
    "fieldname": "enable_image_sync",
    "fieldtype": "Check",
    "label": "Enable Image Sync"
+  },
+  {
+   "fieldname": "additional_discount_account",
+   "fieldtype": "Link",
+   "label": "Additional Discount Account",
+   "options": "Account"
   }
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2025-02-08 14:41:23.773997",
+ "modified": "2025-06-15 17:21:01.566673",
  "modified_by": "Administrator",
  "module": "WooCommerce",
  "name": "WooCommerce Server",

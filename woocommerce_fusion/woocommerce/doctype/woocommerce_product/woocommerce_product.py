@@ -44,7 +44,6 @@ class WooCommerceProduct(WooCommerceResource):
 			args["metadata"] = {"parent_woocommerce_name": woocommerce_name}
 			variants = WooCommerceProduct.get_list_of_records(args)
 			products.extend(variants)
-		# frappe.msgprint(f"Products: {products}")
 		return products
 
 	def after_load_from_db(self, product: Dict):

@@ -8,7 +8,6 @@ frappe.ui.form.on('WooCommerce Server', {
 			return {
 				filters: {
 					disabled: 0,
-					is_group: 0
 				}
 			};
 		}

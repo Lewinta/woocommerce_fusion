@@ -20,7 +20,15 @@ from woocommerce_fusion.woocommerce.woocommerce_api import (
 	generate_woocommerce_record_name_from_domain_and_id,
 )
 
-
+VALID_WC_ORDER_STATUSES = [
+	'pending',
+	'on-hold',
+	'processing',
+	'completed',
+	'pickup',
+	'delivered',
+	'processing-lp'
+]
 def run_sales_order_sync_from_hook(doc, method):
 	if (
 		doc.doctype == "Sales Order"
@@ -55,6 +63,8 @@ def run_sales_order_sync(
 			)
 			woocommerce_order.load_from_db()
 
+		if woocommerce_order.status not in VALID_WC_ORDER_STATUSES:
+			return None, None
 		# Trigger sync
 		sync = SynchroniseSalesOrder(woocommerce_order=woocommerce_order)
 		if enqueue:
@@ -101,7 +111,7 @@ def sync_woocommerce_orders_modified_since(date_time_from=None):
 		raise ValueError(error_text)
 
 	wc_orders = get_list_of_wc_orders(date_time_from=date_time_from)
-	wc_orders += get_list_of_wc_orders(date_time_from=date_time_from, status="trash")
+	# wc_orders += get_list_of_wc_orders(date_time_from=date_time_from, status="trash")
 	for wc_order in wc_orders:
 		try:
 			run_sales_order_sync(woocommerce_order=wc_order, enqueue=True)
@@ -344,6 +354,7 @@ class SynchroniseSalesOrder(SynchroniseWooCommerce):
 				row.total_amount = total_amount
 				row.allocated_amount = total_amount
 				payment_entry.save()
+				payment_entry.submit()
 
 				# Link created Payment Entry to Sales Order
 				sales_order.woocommerce_payment_entry = payment_entry.name
@@ -427,7 +438,7 @@ class SynchroniseSalesOrder(SynchroniseWooCommerce):
 		new_sales_order.fulfillment_method = "WooCommerce"
 		new_sales_order.po_no = new_sales_order.woocommerce_id = wc_order.id
 		new_sales_order.custom_woocommerce_customer_note = wc_order.customer_note
-
+		new_sales_order.mode_of_delivery = wc_order.get_shipping_method()
 		new_sales_order.woocommerce_status = WC_ORDER_STATUS_MAPPING_REVERSE[wc_order.status]
 		wc_server = frappe.get_cached_doc("WooCommerce Server", wc_order.woocommerce_server)
 
@@ -474,6 +485,9 @@ class SynchroniseSalesOrder(SynchroniseWooCommerce):
 		# self.create_and_link_payment_entry(wc_order, new_sales_order)
 		new_sales_order.save()
 		sinv = make_sales_invoice(new_sales_order.name, ignore_permissions=True)
+		sinv.set_posting_time = 1
+		sinv.posting_date = created_date[0]
+		sinv.due_date = new_sales_order.delivery_date
 		sinv.set_missing_values()
 		sinv.calculate_taxes_and_totals()
 		sinv.save(ignore_permissions=True)
@@ -607,21 +621,46 @@ class SynchroniseSalesOrder(SynchroniseWooCommerce):
 
 				found_item = frappe.get_doc("Item", item_codes[0].parent) if item_codes else None
 
-			new_sales_order.append(
-				"items",
-				{
-					"item_code": found_item.name,
-					"item_name": found_item.item_name,
-					"description": found_item.item_name,
-					"delivery_date": new_sales_order.delivery_date,
-					"qty": item.get("quantity"),
-					"rate": item.get("price")
-					if wc_server.use_actual_tax_type
-					else get_tax_inc_price_for_woocommerce_line_item(item),
-					"warehouse": wc_server.warehouse,
-					"discount_percentage": 100 if item.get("price") == 0 else 0,
-				},
-			)
+			if '+' in item.get('sku'):
+				# This means is a product bundle and we need to add items individually
+				bundle_items = get_bundle_items(item, wc_server) 
+				total_bundle = sum([bi.get("rate", 0) for bi in bundle_items])
+				additional_discount = (total_bundle - item.get("price")) * item.get("quantity")
+				new_sales_order.apply_discount_on = 'Net Total'
+				new_sales_order.additional_discount_account = wc_server.additional_discount_account
+				
+				if new_sales_order.discount_amount:
+					new_sales_order.discount_amount += additional_discount if additional_discount > 0 else 0
+				else:
+					new_sales_order.discount_amount = additional_discount if additional_discount > 0 else 0
+				
+				for bundle_item in bundle_items:
+					new_sales_order.append(
+						"items",
+						{
+							"item_code": bundle_item.get("item_code"),
+							"delivery_date": new_sales_order.delivery_date,
+							"qty": bundle_item.get("qty"),
+							"rate": bundle_item.get("rate"),
+							"warehouse": wc_server.warehouse,
+						},
+					)
+			else:
+				new_sales_order.append(
+					"items",
+					{
+						"item_code": found_item.name,
+						"item_name": found_item.item_name,
+						"description": found_item.item_name,
+						"delivery_date": new_sales_order.delivery_date,
+						"qty": item.get("quantity"),
+						"rate": item.get("price")
+						if wc_server.use_actual_tax_type
+						else get_tax_inc_price_for_woocommerce_line_item(item),
+						"warehouse": wc_server.warehouse,
+						"discount_percentage": 100 if item.get("price") == 0 else 0,
+					},
+				)
 
 			if not wc_server.use_actual_tax_type:
 				new_sales_order.taxes_and_charges = wc_server.sales_taxes_and_charges_template
@@ -807,7 +846,7 @@ def get_list_of_wc_orders(
 	if sales_order:
 		filters.append(["WooCommerce Order", "id", "=", sales_order.woocommerce_id])
 	if status:
-		filters.append(["WooCommerce Order", "status", "=", status])
+		filters.append(["WooCommerce Order", "status", "IN", VALID_WC_ORDER_STATUSES])
 
 	while new_results:
 		woocommerce_order = frappe.get_doc({"doctype": "WooCommerce Order"})
@@ -913,3 +952,37 @@ def get_addresses_linking_to(doctype, docname, fields=None):
 			["Dynamic Link", "link_name", "=", docname],
 		],
 	)
+
+
+def get_bundle_items(item, wc_server):
+	"""
+	Extracts bundle items from a WooCommerce line item with '+' in SKU.
+	Returns a list of dictionaries with item_code and qty.
+	"""
+	bundle_items = []
+	for bundle_item in item.get('sku').split("+"):
+		rate_filters = {
+			"price_list": wc_server.price_list,
+			"item_code": bundle_item.strip(),
+			"selling": 1,
+		}
+		item_price = 0
+		if frappe.db.exists("Item Price", rate_filters):
+			item_price = frappe.get_value(
+				"Item Price",
+				rate_filters,
+				"price_list_rate"
+			)
+		else:
+			frappe.throw(
+				_("Item Price not found for Item {0} in Price List {1}").format(
+					bundle_item, wc_server.price_list
+				)
+			)
+		bundle_items.append({
+			"item_code": bundle_item.strip(),
+			"qty": item.get("quantity"),
+			"rate": item_price,
+			"warehouse": wc_server.warehouse,
+		})
+	return bundle_items

@@ -1,10 +1,14 @@
 # Copyright (c) 2023, Dirk van der Laarse and contributors
 # For license information, please see license.txt
 
+
 import json
+import requests
+from frappe import _
 from dataclasses import dataclass
 from datetime import datetime
 from typing import Dict, List
+import time
 
 import frappe
 
@@ -155,7 +159,113 @@ class WooCommerceOrder(WooCommerceResource):
 
 		return order
 
+	def get_shipping_method(self):
+		if not self.shipping_lines:
+			return None
+		lines = json.loads(self.shipping_lines)
+		if not lines:
+			return None
+		if isinstance(lines, list):
+			return lines[0].get("method_title", None)
+		
+	@frappe.whitelist()
+	def mark_order_completed(self):
+		"""
+		Set the WooCommerce order status to 'completed'
+		"""
+		# Ensure API list is initialized
+		if not self.wc_api_list:
+			self.init_api()
+
+		# Parse domain and order ID from docname
+		wc_server_domain, order_id = get_domain_and_id_from_woocommerce_record_name(self.name)
+
+		# Select the correct API instance
+		api = next((a for a in self.wc_api_list if wc_server_domain in a.woocommerce_server_url), None)
+
+		if not api:
+			frappe.throw(_("No WooCommerce API instance found for domain {0}").format(wc_server_domain))
+
+		# Send update to WooCommerce
+		try:
+			response = api.api.put(
+				f"orders/{order_id}",
+				data={"status": "completed"}
+			)
+		except Exception as err:
+			log_and_raise_error(err, error_text="Failed to mark order as completed")
+
+		if response.status_code != 200:
+			log_and_raise_error(error_text="Failed to mark order as completed", response=response)
+
+		# return {
+		# 	"message": _("Order marked as completed in WooCommerce."),
+		# 	"order_id": order_id,
+		# 	"woocommerce_response": response.json()
+		# }
+		
+	@frappe.whitelist()
 	def update_shipment_tracking(self):
+		wc_server_domain, order_id = get_domain_and_id_from_woocommerce_record_name(self.name)
+		order = frappe.get_doc("WooCommerce Order", self.name)
+		order_doc_name = frappe.db.exists("Sales Order", {"po_no": order.id})
+
+		if not order_doc_name:
+			frappe.log_error("Tracking Update Failed", f"No Sales Order found for WooCommerce Order: {self.name}")
+			return False
+
+		order_doc = frappe.get_doc("Sales Order", order_doc_name)
+
+		if not order_doc.tracking_number:
+			frappe.log_error("Tracking Update Skipped", f"Tracking number not set for Sales Order: {order_doc.name}")
+			return False
+
+		if not order.wc_api_list:
+			order.init_api()
+
+		api = next((a for a in order.wc_api_list if wc_server_domain in a.woocommerce_server_url), None)
+		if not api:
+			frappe.throw("No matching WooCommerce API instance found.")
+
+		# Format date_shipped
+		try:
+			date_shipped = datetime.strptime(str(order_doc.date_shipped), "%Y-%m-%d").date().isoformat()
+		except Exception:
+			date_shipped = datetime.utcnow().date().isoformat()
+
+		tracking_info = {
+			"tracking_number": order_doc.tracking_number,
+			"tracking_provider": order_doc.carrier_id or "Other",
+			"date_shipped": date_shipped
+		}
+
+		full_plugin_url = f"{api.woocommerce_server_url.rstrip('/')}/wp-json/wc-shipment-tracking/v3/orders/{order.id}/shipment-trackings"
+
+		try:
+			print(f"Posting to {full_plugin_url} \n\nwith data: {tracking_info}\n\n and auth: {api.api.consumer_key}, {api.api.consumer_secret}\n\n Tracking Number: {tracking_info['tracking_number']}")
+			response = requests.post(
+				full_plugin_url,
+				auth=(api.api.consumer_key, api.api.consumer_secret),
+				headers={
+					"Content-Type": "application/json",
+					"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/120.0.0.0 Safari/537.36",
+
+				},
+				json=tracking_info
+			)
+		except Exception as e:
+			msg = f"Shipment Tracking API Call Failed\n{str(e)}\n{frappe.get_traceback()}"
+			frappe.log_error("Shipment Tracking Error", msg)
+			raise ValueError("Failed to send shipment tracking data.")
+
+		if response.status_code not in (200, 201):
+			frappe.log_error("Shipment Tracking Failed", f"Status {response.status_code}\n{response.text}")
+			raise ValueError("Shipment tracking update failed.")
+
+		return response.json()
+	
+	@frappe.whitelist()
+	def update_shipment_tracking_deprecated(self):
 		"""
 		Handle fields from "Advanced Shipment Tracking" WooCommerce Plugin
 		Replace the current shipment_trackings with shipment_tracking.
