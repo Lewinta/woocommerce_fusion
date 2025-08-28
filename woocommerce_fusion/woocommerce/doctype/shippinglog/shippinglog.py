@@ -39,20 +39,22 @@ class ShippingLog(Document):
 			if so_doc.per_delivered < 100:
 				dn = create_delivery_note(self.pick_list)
 				dn.submit()
-				
+			response = None
 			if fulfillment_method == "WooCommerce":
 				self.publish_tracking_number_to_woocommerce()
 			elif fulfillment_method == "eBay":
-				self.publish_tracking_number_to_ebay()	
+				response = self.publish_tracking_number_to_ebay()	
 			elif fulfillment_method == "Amazon":
 				self.publish_tracking_number_to_amazon()
 			
-			self.log_shipment_update(
-				fulfillment_method,
-				"Success",
-			)
-			self.save()
-			return True
+			if response:
+				self.log_shipment_update(
+					fulfillment_method,
+					"Success",
+					response
+				)
+				self.save()
+				return True
 		except Exception as e:
 			self.log_shipment_update(
 				fulfillment_method,
@@ -84,7 +86,7 @@ class ShippingLog(Document):
 		if not self.carrier_id:
 			self.carrier_id = order.carrier_id
 
-		ebay_order.update_shipment_tracking(self.tracking_number, self.carrier_id)
+		return ebay_order.update_shipment_tracking(self.tracking_number, self.carrier_id)
 		
 	
 	def publish_tracking_number_to_amazon(self):
