@@ -369,7 +369,9 @@ class SynchroniseItem(SynchroniseWooCommerce):
 	) -> None:
 		item_categories = set()
 		product_categories = set()
-		
+		if not item.get("custom_woocommerce_categories"):
+			return
+
 		for c in item.custom_woocommerce_categories:
 			item_categories.add(prepare_category(c))
 
@@ -730,49 +732,67 @@ class SynchroniseItem(SynchroniseWooCommerce):
 
 
 def get_list_of_wc_products(
-	item: Optional[ERPNextItemToSync] = None, date_time_from: Optional[datetime] = None
+    item: Optional[ERPNextItemToSync] = None,
+    date_time_from: Optional[datetime] = None,
 ) -> List[WooCommerceProduct]:
-	"""
-	Fetches a list of WooCommerce Products within a specified date range or linked with an Item, using pagination.
+    """
+    Fetch a full list of WooCommerce Products with proper pagination.
+    Pulls 100-per-page until exhaustion.
+    At least one of date_time_from or item is required.
+    """
+    if not any([date_time_from, item]):
+        raise ValueError("At least one of date_time_from or item parameters are required")
 
-	At least one of date_time_from, item parameters are required
-	"""
-	if not any([date_time_from, item]):
-		raise ValueError("At least one of date_time_from or item parameters are required")
+    per_page = 100
+    page = 1
+    wc_products: List[WooCommerceProduct] = []
 
-	wc_records_per_page_limit = 100
-	page_length = wc_records_per_page_limit
-	new_results = True
-	start = 0
-	filters = []
-	wc_products = []
-	servers = None
+    filters = []
+    servers = None
 
-	# Build filters
-	if date_time_from:
-		filters.append(["WooCommerce Product", "date_modified", ">", date_time_from])
-	if item:
-		filters.append(["WooCommerce Product", "id", "=", item.item_woocommerce_server.woocommerce_id])
-		servers = [item.item_woocommerce_server.woocommerce_server]
+    # Build filters (same as your current logic)
+    if date_time_from:
+        filters.append(["WooCommerce Product", "date_modified", ">", date_time_from])
+    if item:
+        filters.append(["WooCommerce Product", "id", "=", item.item_woocommerce_server.woocommerce_id])
+        servers = [item.item_woocommerce_server.woocommerce_server]
 
-	while new_results:
-		woocommerce_product = frappe.get_doc({"doctype": "WooCommerce Product"})
-		new_results = woocommerce_product.get_list(
-			args={
-				"filters": filters,
-				"page_lenth": page_length,
-				"start": start,
-				"servers": servers,
-				"as_doc": True,
-			}
-		)
-		for wc_product in new_results:
-			wc_products.append(wc_product)
-		start += page_length
-		if len(new_results) < page_length:
-			new_results = []
+    while True:
+        woocommerce_product = frappe.get_doc({"doctype": "WooCommerce Product"})
 
-	return wc_products
+        # Be generous with arg names so it works with your wrapper no matter how it's implemented.
+        args = {
+            "filters": filters,
+            "servers": servers,
+            "as_doc": True,
+
+            # WooCommerce-style paging
+            "per_page": per_page,
+            "page": page,
+
+            # Offset/limit-style paging (some wrappers use these)
+            "limit": per_page,
+            "offset": (page - 1) * per_page,
+
+            # Frappe-style naming (in case your get_list proxies these)
+            "limit_page_length": per_page,
+            "limit_start": (page - 1) * per_page,
+        }
+
+        batch = woocommerce_product.get_list(args=args) or []
+
+        if not batch:
+            break
+
+        wc_products.extend(batch)
+
+        # Stop when the last page is shorter than `per_page`
+        if len(batch) < per_page:
+            break
+
+        page += 1
+
+    return wc_products
 
 
 def get_item_price_rate(item: ERPNextItemToSync):
