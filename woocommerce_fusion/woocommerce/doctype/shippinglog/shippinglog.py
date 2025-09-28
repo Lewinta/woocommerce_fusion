@@ -46,6 +46,8 @@ class ShippingLog(Document):
 				response = self.publish_tracking_number_to_ebay()	
 			elif fulfillment_method == "Amazon":
 				self.publish_tracking_number_to_amazon()
+			elif fulfillment_method == "Walmart":
+				response = self.publish_tracking_number_to_walmart()
 			
 			if response:
 				self.log_shipment_update(
@@ -92,6 +94,20 @@ class ShippingLog(Document):
 	def publish_tracking_number_to_amazon(self):
 		# TODO: Implement Amazon tracking number publishing
 		pass
+	
+	def publish_tracking_number_to_walmart(self):
+		if not self.sales_order:
+			return
+		order = frappe.get_doc("Sales Order", self.sales_order)
+
+		if not order.po_no or order.fulfillment_method != "Walmart":
+			return
+		walmart_order = frappe.get_doc("Walmart Order", order.po_no)
+
+		if not self.carrier_id:
+			self.carrier_id = order.carrier_id
+
+		return walmart_order.update_shipment_tracking(shipping_log=self)
 
 	def log_shipment_update(self, fulfillment_channel, status, message=None, published=None):
 		if not published:

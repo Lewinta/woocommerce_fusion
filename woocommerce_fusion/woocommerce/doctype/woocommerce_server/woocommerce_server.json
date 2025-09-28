@@ -73,7 +73,9 @@
   "tab_plugins",
   "advanced_shipment_tracking_section",
   "wc_plugin_advanced_shipment_tracking",
-  "wc_ast_shipment_providers"
+  "wc_ast_shipment_providers",
+  "errors_tab",
+  "notify_users"
  ],
  "fields": [
   {
@@ -495,11 +497,22 @@
    "fieldtype": "Link",
    "label": "Additional Discount Account",
    "options": "Account"
+  },
+  {
+   "fieldname": "errors_tab",
+   "fieldtype": "Tab Break",
+   "label": "Errors"
+  },
+  {
+   "description": "Notify these users if an order import fails",
+   "fieldname": "notify_users",
+   "fieldtype": "Small Text",
+   "label": "Notify Users"
   }
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2025-06-15 17:21:01.566673",
+ "modified": "2025-09-18 01:14:32.214402",
  "modified_by": "Administrator",
  "module": "WooCommerce",
  "name": "WooCommerce Server",
