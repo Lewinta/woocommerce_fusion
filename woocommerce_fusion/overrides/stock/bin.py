@@ -33,11 +33,13 @@ class Bin(ERPNExtBin):
         site = frappe.local.site
         key = f"inv-sync:{site}:{item_code}"
         # set if not exists + expiry (debounce window)
+        # changed long to short queue and timeout to 900 seconds because thelong queue has thousands of jobs and it was taking too long to process.
         if r.set(key, "1", nx=True, ex=DEBOUNCE_SECONDS):
             frappe.enqueue(
                 method="woocommerce_fusion.overrides.stock.bin.notify_of_projected_qty_change",
-                queue="long",
-                job_name=f"long:sync_all_channels:{item_code}",
+                queue="short",
+                job_name=f"short:sync_all_channels:{item_code}",
+                timeout=900,
                 enqueue_after_commit=True,
                 deduplicate=True,
                 deduplicate_timeout=DEBOUNCE_SECONDS,
