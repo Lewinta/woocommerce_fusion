@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<title>{{ subject }}</title>
+<style>
+  /* Keep styles simple; widely supported by email clients */
+  body { font-family: -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif; color:#111; margin:0; padding:0; }
+  .container { max-width: 720px; margin: 0 auto; padding: 24px; }
+  .card { border:1px solid #e5e7eb; border-radius: 12px; padding: 20px; box-shadow: 0 1px 2px rgba(0,0,0,0.03); }
+  h1 { font-size: 18px; margin: 0 0 12px; }
+  h2 { font-size: 16px; margin: 20px 0 10px; }
+  .muted { color:#6b7280; }
+  .row { display: flex; flex-wrap: wrap; gap: 12px; }
+  .pill { display:inline-block; padding:6px 10px; border-radius:999px; font-size:12px; border:1px solid #e5e7eb; margin-right: 6px; }
+  .pill--blue { background:#eff6ff; border-color:#bfdbfe; }
+  .pill--purple { background:#f5f3ff; border-color:#ddd6fe; }
+  .kv { display:grid; grid-template-columns: 160px 1fr; gap:8px 12px; font-size: 14px; }
+  .kv div { padding:4px 0; border-bottom: 1px dashed #eee; }
+  .table { width: 100%; border-collapse: collapse; font-size: 14px; }
+  .table th, .table td { padding:10px 8px; border-bottom:1px solid #eee; vertical-align: top; }
+  .table th { text-align: left; font-weight: 600; }
+  .price { text-align: right; white-space: nowrap; }
+  .total { font-weight: 700; }
+  .small { font-size: 12px; color:#4b5563; }
+  code { background:#f3f4f6; padding:2px 4px; border-radius:4px; }
+  details { margin-top: 14px; border: 1px dashed #e5e7eb; border-radius: 10px; padding: 10px 12px; }
+  details > summary { cursor: pointer; font-weight: 600; }
+  pre { background: #0b1021; color:#e5e7eb; padding: 12px; border-radius: 8px; overflow:auto; font-size:12px; line-height:1.4; }
+  .error { color:#b91c1c; }
+  .footer { margin-top: 18px; font-size:12px; color:#6b7280; }
+</style>
+</head>
+<body>
+  <div class="container">
+    <div class="card">
+
+      <h1>{{ subject }}</h1>
+
+      <div class="row" style="margin-bottom:12px;">
+        <span class="pill pill--blue"><strong>Channel:</strong> {{ channel or 'WooCommerce' }}</span>
+        {% if fulfillment %}<span class="pill pill--purple"><strong>Fulfillment:</strong> {{ fulfillment }}</span>{% endif %}
+        {% if status %}<span class="pill"><strong>Status:</strong> {{ status }}</span>{% endif %}
+      </div>
+
+      <div class="row">
+        <!-- Left column -->
+        <div style="flex:1; min-width:280px;">
+          <div class="kv">
+            <div class="muted">Order ID</div><div>{{ order_id }}</div>
+            {% if site %}
+              <div class="muted">Site</div><div>{{ site }}</div>
+            {% endif %}
+            {% if buyer_name %}
+              <div class="muted">Buyer</div><div>{{ buyer_name }}</div>
+            {% endif %}
+            {% if buyer_email %}
+              <div class="muted">Buyer Email</div><div>{{ buyer_email }}</div>
+            {% endif %}
+          </div>
+        </div>
+
+        <!-- Right column -->
+        <div style="flex:1; min-width:280px;">
+          <div class="kv">
+            <div class="muted">Created</div><div>{{ created_local }}</div>
+            {% if ship_level %}
+              <div class="muted">Ship Method</div><div>{{ ship_level }}</div>
+            {% endif %}
+            {% if billing_address %}
+              <div class="muted">Bill To</div><div>{{ billing_address }}</div>
+            {% endif %}
+            {% if shipping_address %}
+              <div class="muted">Ship To</div><div>{{ shipping_address }}</div>
+            {% endif %}
+          </div>
+        </div>
+      </div>
+
+      <h2>Items</h2>
+      <table class="table" role="table" aria-label="Items">
+        <thead>
+          <tr>
+            <th>SKU</th>
+            <th>Title</th>
+            <th class="price">Qty</th>
+            <th class="price">Price</th>
+            <th class="price">Tax</th>
+            <th class="price">Line Total</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% set cur = currency or 'USD' %}
+          {% for it in (items or []) %}
+            <tr>
+              <td><code>{{ it.sku }}</code></td>
+              <td>
+                {{ it.title }}
+                {% if it.attributes and it.attributes|length %}
+                  <div class="small">
+                    {% for k,v in it.attributes %}
+                      <span><strong>{{ k }}:</strong> {{ v }}</span>{% if not loop.last %} · {% endif %}
+                    {% endfor %}
+                  </div>
+                {% endif %}
+              </td>
+              <td class="price">{{ it.qty }}</td>
+              <td class="price">{{ (it.price or 0) | float | round(2) }} {{ cur }}</td>
+              <td class="price">{{ (it.tax or 0) | float | round(2) }} {{ cur }}</td>
+              <td class="price">{{ (it.line_total or 0) | float | round(2) }} {{ cur }}</td>
+            </tr>
+          {% endfor %}
+          {% if not items or items|length == 0 %}
+            <tr><td colspan="6" class="muted">No line items.</td></tr>
+          {% endif %}
+        </tbody>
+      </table>
+
+      <table class="table" role="table" aria-label="Totals" style="margin-top:8px;">
+        <tbody>
+          <tr>
+            <th style="text-align:right;">Items Subtotal</th>
+            <td class="price">{{ (totals.items_total or 0) | float | round(2) }} {{ cur }}</td>
+          </tr>
+          <tr>
+            <th style="text-align:right;">Shipping</th>
+            <td class="price">{{ (totals.shipping_total or 0) | float | round(2) }} {{ cur }}</td>
+          </tr>
+          <tr>
+            <th style="text-align:right;">Discount</th>
+            <td class="price">-{{ (totals.discount_total or 0) | float | round(2) }} {{ cur }}</td>
+          </tr>
+          <tr>
+            <th style="text-align:right;">Tax</th>
+            <td class="price">{{ (totals.tax_total or 0) | float | round(2) }} {{ cur }}</td>
+          </tr>
+          <tr>
+            <th style="text-align:right;" class="total">Grand Total</th>
+            <td class="price total">{{ (totals.grand_total or 0) | float | round(2) }} {{ cur }}</td>
+          </tr>
+        </tbody>
+      </table>
+
+      {% if error_message or traceback %}
+        <h2 class="error">Error</h2>
+        <p class="error"><strong>{{ error_message }}</strong></p>
+      {% endif %}
+
+      <details>
+        <summary>Show Error & Traceback</summary>
+        {% if traceback %}<pre>{{ traceback }}</pre>{% else %}<div class="muted small">No traceback available.</div>{% endif %}
+      </details>
+
+      <details>
+        <summary>Show Raw Payload (JSON)</summary>
+        <pre>{{ payload_pretty }}</pre>
+      </details>
+
+      <div class="footer">
+        Automated message from ERPNext · {{ now_str }}
+      </div>
+
+    </div>
+  </div>
+</body>
+</html>

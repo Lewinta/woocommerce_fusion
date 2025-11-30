@@ -1,0 +1,49 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "creation": "2025-02-25 17:18:15.124765",
+ "doctype": "DocType",
+ "editable_grid": 1,
+ "engine": "InnoDB",
+ "field_order": [
+  "category",
+  "id",
+  "slug"
+ ],
+ "fields": [
+  {
+   "fieldname": "category",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Category",
+   "options": "Woocommerce Category",
+   "reqd": 1
+  },
+  {
+   "fetch_from": "category.id",
+   "fieldname": "id",
+   "fieldtype": "Data",
+   "label": "ID",
+   "read_only": 1
+  },
+  {
+   "fetch_from": "category.slug",
+   "fieldname": "slug",
+   "fieldtype": "Data",
+   "label": "slug",
+   "read_only": 1
+  }
+ ],
+ "index_web_pages_for_search": 1,
+ "istable": 1,
+ "links": [],
+ "modified": "2025-03-01 15:47:04.741963",
+ "modified_by": "Administrator",
+ "module": "WooCommerce",
+ "name": "Woocommerce Categories",
+ "owner": "Administrator",
+ "permissions": [],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": []
+}

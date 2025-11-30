@@ -1,0 +1,66 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "creation": "2025-06-19 08:54:08.459464",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "fulfillment_channel",
+  "published",
+  "main_cb",
+  "status",
+  "message_sb",
+  "message"
+ ],
+ "fields": [
+  {
+   "fieldname": "fulfillment_channel",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "label": "Fulfillment Channel",
+   "options": "\nAmazon\neBay\nWooCommerce\nWalmart",
+   "reqd": 1
+  },
+  {
+   "fieldname": "status",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "label": "Status",
+   "options": "Pending\nSuccess\nFailed",
+   "reqd": 1
+  },
+  {
+   "default": "Now",
+   "fieldname": "published",
+   "fieldtype": "Datetime",
+   "in_list_view": 1,
+   "label": "Published",
+   "reqd": 1
+  },
+  {
+   "fieldname": "message_sb",
+   "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "message",
+   "fieldtype": "Small Text",
+   "label": "Message"
+  },
+  {
+   "fieldname": "main_cb",
+   "fieldtype": "Column Break"
+  }
+ ],
+ "index_web_pages_for_search": 1,
+ "istable": 1,
+ "links": [],
+ "modified": "2025-09-29 15:02:13.416453",
+ "modified_by": "Administrator",
+ "module": "WooCommerce",
+ "name": "Shipment Tracking Update",
+ "owner": "Administrator",
+ "permissions": [],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": []
+}
