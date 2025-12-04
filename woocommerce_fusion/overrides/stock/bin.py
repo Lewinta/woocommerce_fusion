@@ -67,35 +67,55 @@ def notify_of_projected_qty_change(item_code: str, **kwargs):
             return
 
         # Update WooCommerce main item stock
+        frappe.log_error(
+            f"stock_sync_woocommerce_site_start_{item_code}",
+            f"[Stock Sync] Starting WooCommerce Site sync for {item_code}"
+        )
         try:
             update_stock_levels_on_woocommerce_site(item_code)
         except Exception:
             frappe.log_error(f"[Stock Sync] WooCommerce Site Failed for {item_code}", frappe.get_traceback())
 
         # Update WooCommerce variants
+        frappe.log_error(
+            f"stock_sync_woocommerce_variants_start_{item_code}",
+            f"[Stock Sync] Starting WooCommerce Variants sync for {item_code}"
+        )
         try:
             update_stock_levels_on_variants(item_code)
         except Exception:
             frappe.log_error(f"[Stock Sync] WooCommerce Variants Failed for {item_code}", frappe.get_traceback())
 
         # Update Amazon listing
+        frappe.log_error(
+            f"stock_sync_amazon_start_{item_code}",
+            f"[Stock Sync] Starting Amazon sync for {item_code}"
+        )
         try:
             sync_item_stock_to_amazon(item_code)
         except Exception:
             frappe.log_error(f"[Stock Sync] Amazon Sync Failed for {item_code}", frappe.get_traceback())
 
         # Update eBay listing
+        frappe.log_error(
+            f"stock_sync_ebay_start_{item_code}",
+            f"[Stock Sync] Starting eBay sync for {item_code}"
+        )
         try:
             sync_item_stock_to_ebay(item_code)
         except Exception:
             frappe.log_error(f"[Stock Sync] eBay Sync Failed for {item_code}", frappe.get_traceback())
 
         # Update Walmart listing (only if product reference exists)
-        try:
-            if frappe.db.exists("Walmart Product Reference", {"parent": item_code}):
+        if frappe.db.exists("Walmart Product Reference", {"parent": item_code}):
+            frappe.log_error(
+                f"stock_sync_walmart_start_{item_code}",
+                f"[Stock Sync] Starting Walmart sync for {item_code}"
+            )
+            try:
                 sync_item_stock_to_walmart(item_code)
-        except Exception:
-            frappe.log_error(f"[Stock Sync] Walmart Sync Failed for {item_code}", frappe.get_traceback())
+            except Exception:
+                frappe.log_error(f"[Stock Sync] Walmart Sync Failed for {item_code}", frappe.get_traceback())
 
     except Exception:
         frappe.log_error("notify_of_projected_qty_change crashed", frappe.get_traceback())
