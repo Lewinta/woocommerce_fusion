@@ -49,19 +49,14 @@ class Bin(ERPNExtBin):
                 enqueue_after_commit=True,
                 deduplicate=True,
                 deduplicate_timeout=DEBOUNCE_SECONDS,
-                kwargs={"bin_id": self.name, "item_code": item_code},
+                kwargs={"item_code": item_code},
             )
 
-def notify_of_projected_qty_change(bin_id=None, item_code: str = None, **kwargs):
+def notify_of_projected_qty_change(item_code: str, **kwargs):
     """
-    Backward-compatible entry point.
-    Old queued jobs call with bin_id=..., new ones call with item_code=....
+    Sync stock levels to all channels when Bin projected quantity changes.
     """
     try:
-        if not item_code and bin_id:
-            # Resolve item_code from the old payload
-            item_code = frappe.db.get_value("Bin", bin_id, "item_code")
-
         if not item_code:
             # Nothing we can do
             return
