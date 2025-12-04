@@ -1,7 +1,7 @@
 {
  "actions": [],
  "allow_import": 1,
- "autoname": "autoincrement",
+ "autoname": "hash",
  "creation": "2024-06-02 23:13:35.967901",
  "default_view": "List",
  "doctype": "DocType",
@@ -80,6 +80,7 @@
    "label": "Weight"
   },
   {
+   "default": "Today",
    "fieldname": "ship_date",
    "fieldtype": "Date",
    "in_standard_filter": 1,
@@ -119,14 +120,15 @@
    "label": "Purchase Order"
   },
   {
+   "default": "Now",
    "fieldname": "ship_time",
    "fieldtype": "Time",
    "label": "Ship Time"
   },
   {
+   "default": "Now",
    "fieldname": "ship_timestamp",
    "fieldtype": "Datetime",
-   "hidden": 1,
    "label": "Ship Timestamp"
   },
   {
@@ -165,11 +167,11 @@
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2025-06-19 10:49:51.604821",
+ "modified": "2025-12-02 11:38:13.211888",
  "modified_by": "Administrator",
  "module": "WooCommerce",
  "name": "ShippingLog",
- "naming_rule": "Autoincrement",
+ "naming_rule": "Random",
  "owner": "Administrator",
  "permissions": [
   {

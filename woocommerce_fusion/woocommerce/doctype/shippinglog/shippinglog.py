@@ -5,6 +5,7 @@ import json
 import frappe
 from frappe.model.document import Document
 from frappe.query_builder import functions as fn
+from frappe.utils import now
 from walmart.walmart.doctype.walmart_order.walmart_order import decode
 from erpnext.stock.doctype.pick_list.pick_list import create_delivery_note
 
@@ -13,12 +14,14 @@ class ShippingLog(Document):
 		SL = frappe.qb.DocType("ShippingLog")
 		name = frappe.qb.from_(SL).select(fn.Max(SL.name)).run()
 		self.name = str((name[0][0]) + 1)
+		print(f"Assigned name {self.name} to Shipping Log")
+		print(self.as_json())
 	
 	def before_insert(self):
 		# We get the ship date and time on a variable called ship timestamp
 		# We need to extract these values 
 		if not self.ship_date and not self.ship_time:
-			self.ship_date, self.ship_time = str(self.ship_timestamp).split(" ")
+			self.ship_date, self.ship_time = str(self.ship_timestamp or now()).split(" ")
 		
 	
 	@frappe.whitelist()

@@ -46,7 +46,7 @@ class Bin(ERPNExtBin):
                 kwargs={"item_code": item_code},
             )
 
-def notify_of_projected_qty_change(item_code: str = None, bin_id: str = None, **kwargs):
+def notify_of_projected_qty_change(bin_id, item_code: str = None, **kwargs):
     """
     Backward-compatible entry point.
     Old queued jobs call with bin_id=..., new ones call with item_code=....
