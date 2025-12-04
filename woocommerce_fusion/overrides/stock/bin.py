@@ -24,6 +24,12 @@ class Bin(ERPNExtBin):
         """
         Debounce by item_code to avoid N enqueues per Bin touch.
         """
+        # Log self object
+        frappe.log_error(
+            f"enqueue_projected_qty_notify_self_object {self.name or 'unknown'}",
+            f"[Bin] enqueue_projected_qty_notify - self object\n\n{frappe.as_json(self.as_dict(), indent=2)}"
+        )
+        
         # If item not set for any channel, skip fast:
         item_code = self.item_code
         if not item_code:
@@ -43,10 +49,10 @@ class Bin(ERPNExtBin):
                 enqueue_after_commit=True,
                 deduplicate=True,
                 deduplicate_timeout=DEBOUNCE_SECONDS,
-                kwargs={"item_code": item_code},
+                kwargs={"bin_id": self.name, "item_code": item_code},
             )
 
-def notify_of_projected_qty_change(bin_id, item_code: str = None, **kwargs):
+def notify_of_projected_qty_change(bin_id=None, item_code: str = None, **kwargs):
     """
     Backward-compatible entry point.
     Old queued jobs call with bin_id=..., new ones call with item_code=....
